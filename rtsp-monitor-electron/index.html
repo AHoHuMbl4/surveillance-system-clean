@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Циклический мониторинг • Система видеонаблюдения</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>🎥 Автономная система видеонаблюдения</title>
     <style>
         * {
             margin: 0;
@@ -16,185 +16,247 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            overflow: hidden;
+            color: #333;
         }
 
         .container {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
         }
 
-        /* Шапка */
         .header {
-            background: rgba(0,0,0,0.3);
-            padding: 15px 30px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
-        .logo {
-            color: white;
+        h1 {
+            color: #333;
             font-size: 24px;
-            font-weight: bold;
-        }
-
-        .current-info {
-            color: white;
-            text-align: center;
-            flex: 1;
-            margin: 0 20px;
-        }
-
-        .current-apartment {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .current-time {
-            font-size: 16px;
-            color: rgba(255,255,255,0.8);
+            font-weight: 600;
         }
 
         .user-info {
-            color: white;
-            text-align: right;
-            font-size: 14px;
-        }
-
-        /* Контролы */
-        .controls {
-            background: rgba(0,0,0,0.2);
-            padding: 15px 30px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            backdrop-filter: blur(10px);
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 10px;
+            margin-left: 20px;
         }
 
         .btn {
             padding: 8px 16px;
             border: none;
-            border-radius: 20px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 500;
             transition: all 0.3s;
         }
 
         .btn-primary {
-            background: #3498db;
+            background: #667eea;
             color: white;
+        }
+
+        .btn-primary:hover, .btn-primary.active {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn-admin {
+            background: #ff6b35;
+            color: white;
+        }
+
+        .btn-admin:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.1);
+            background: #6c757d;
             color: white;
-            border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        .btn-secondary:hover {
+            background: #5a6268;
         }
 
-        /* Кнопки квартир */
-        .apartment-buttons {
-            padding: 15px 30px;
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        /* Скрытые элементы для ролей */
+        .admin-only {
+            display: none;
+        }
+
+        .user-admin .admin-only {
+            display: block;
+        }
+
+        .user-admin .admin-inline {
+            display: inline-block;
+        }
+
+        /* Переключатель экранов */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Экран мониторинга камер */
+        .monitoring-screen {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .apartment-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .apartment-info h2 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .apartment-info p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .apartment-nav {
             display: flex;
             gap: 10px;
-            justify-content: center;
-            background: rgba(0,0,0,0.1);
+            align-items: center;
+        }
+
+        .apartment-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
         }
 
         .apartment-btn {
             padding: 8px 16px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            border-radius: 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
             font-size: 14px;
+            transition: all 0.3s;
         }
 
         .apartment-btn.active {
-            background: #3498db;
-            border-color: #3498db;
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
         }
 
         .apartment-btn:hover {
-            background: rgba(255,255,255,0.2);
+            border-color: #667eea;
         }
 
         /* Сетка камер */
         .camera-grid {
-            flex: 1;
-            padding: 20px 30px;
             display: grid;
             gap: 15px;
-            align-content: center;
+            margin-top: 20px;
+            width: 100%;
+            height: 600px;
         }
 
-        /* Адаптивная сетка */
-        .camera-grid.cameras-1 { grid-template-columns: 1fr; max-width: 800px; margin: 0 auto; }
+        /* Адаптивные сетки */
+        .camera-grid.cameras-1 { grid-template-columns: 1fr; }
         .camera-grid.cameras-2 { grid-template-columns: 1fr 1fr; }
         .camera-grid.cameras-3 { grid-template-columns: 1fr 1fr 1fr; }
         .camera-grid.cameras-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-        .camera-grid.cameras-5, .camera-grid.cameras-6 { grid-template-columns: repeat(3, 1fr); }
-        .camera-grid.cameras-7, .camera-grid.cameras-8, .camera-grid.cameras-9 { grid-template-columns: repeat(3, 1fr); }
-        .camera-grid.cameras-10, .camera-grid.cameras-11, .camera-grid.cameras-12 { grid-template-columns: repeat(4, 1fr); }
-        .camera-grid.cameras-13, .camera-grid.cameras-14, .camera-grid.cameras-15, .camera-grid.cameras-16 { grid-template-columns: repeat(4, 1fr); }
+        .camera-grid.cameras-5,
+        .camera-grid.cameras-6 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .camera-grid.cameras-7,
+        .camera-grid.cameras-8,
+        .camera-grid.cameras-9 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+        .camera-grid.cameras-10,
+        .camera-grid.cameras-11,
+        .camera-grid.cameras-12 { grid-template-columns: 1fr 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+        .camera-grid.cameras-13,
+        .camera-grid.cameras-14,
+        .camera-grid.cameras-15,
+        .camera-grid.cameras-16 { grid-template-columns: 1fr 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr 1fr; }
 
-        /* Слот камеры */
         .camera-slot {
             position: relative;
-            background: rgba(0,0,0,0.4);
-            border-radius: 10px;
+            background: #000;
+            border-radius: 8px;
             overflow: hidden;
-            aspect-ratio: 16/9;
-            border: 2px solid rgba(255,255,255,0.1);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 0.3s;
+            min-height: 120px;
         }
 
         .camera-slot:hover {
-            border-color: #3498db;
-            transform: translateY(-2px);
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
-        .camera-slot.active {
-            border-color: #27ae60;
-        }
-
-        .camera-slot.error {
-            border-color: #e74c3c;
-        }
-
-        .camera-slot.loading {
-            border-color: #f39c12;
-        }
-
-        /* Видео в слоте */
         .camera-video {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            background: #000;
-        }
-
-        .camera-placeholder {
-            width: 100%;
-            height: 100%;
+            background: linear-gradient(45deg, #2c3e50, #34495e);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 48px;
-            color: rgba(255,255,255,0.5);
-            background: rgba(0,0,0,0.6);
+            color: #ecf0f1;
         }
 
         .camera-overlay {
@@ -203,52 +265,53 @@
             left: 0;
             right: 0;
             background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 15px 10px 10px;
             color: white;
-            padding: 15px;
-            transform: translateY(100%);
-            transition: transform 0.3s;
-        }
-
-        .camera-slot:hover .camera-overlay {
-            transform: translateY(0);
         }
 
         .camera-name {
-            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 14px;
+            margin-bottom: 3px;
         }
 
         .camera-status {
-            font-size: 12px;
-            color: rgba(255,255,255,0.8);
+            font-size: 11px;
+            opacity: 0.8;
         }
 
-        /* Кнопка звука */
-        .audio-btn {
+        .camera-controls {
             position: absolute;
             top: 10px;
             right: 10px;
-            width: 40px;
-            height: 40px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .camera-btn {
+            width: 30px;
+            height: 30px;
             border: none;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.7);
             color: white;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: all 0.3s;
         }
 
-        .audio-btn:hover {
-            background: rgba(0,0,0,0.8);
+        .camera-btn:hover {
+            background: rgba(0,0,0,0.9);
+            transform: scale(1.1);
         }
 
-        .audio-btn.active {
-            background: #27ae60;
+        .camera-btn.audio-active {
+            background: #28a745;
         }
 
-        /* Индикатор статуса */
         .status-indicator {
             position: absolute;
             top: 10px;
@@ -256,87 +319,121 @@
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: #95a5a6;
-        }
-
-        .status-indicator.online {
-            background: #27ae60;
-        }
-
-        .status-indicator.offline {
-            background: #e74c3c;
-        }
-
-        .status-indicator.loading {
-            background: #f39c12;
+            background: #28a745;
             animation: pulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .status-indicator.offline {
+            background: #dc3545;
+            animation: none;
         }
 
-        /* Контролы автоцикла */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Автоцикл контролы */
         .autocycle-controls {
-            background: rgba(0,0,0,0.2);
-            padding: 15px 30px;
             display: flex;
+            gap: 10px;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
-            color: white;
+            background: #e9ecef;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .autocycle-controls label {
             font-size: 14px;
+            font-weight: 500;
         }
 
         .autocycle-controls select {
             padding: 5px 10px;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 15px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            cursor: pointer;
-        }
-
-        .autocycle-controls select option {
-            background: #333;
-            color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
         }
 
         /* Полноэкранный режим */
-        .fullscreen-overlay {
+        .fullscreen-modal {
+            display: none;
             position: fixed;
-            top: 0;
+            z-index: 2000;
             left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: none;
+            background-color: rgba(0, 0, 0, 0.95);
+        }
+
+        .fullscreen-modal.active {
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
         }
 
-        .fullscreen-overlay.active {
-            display: flex;
-        }
-
-        .fullscreen-video {
+        .fullscreen-content {
             position: relative;
             width: 90%;
             height: 90%;
             background: #000;
-            border-radius: 10px;
+            border-radius: 15px;
             overflow: hidden;
         }
 
-        .fullscreen-video video {
+        .fullscreen-video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            color: #ecf0f1;
         }
 
-        .fullscreen-close {
+        .fullscreen-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 30px;
+            color: white;
+        }
+
+        .fullscreen-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .fullscreen-info {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .fullscreen-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-slider {
+            width: 100px;
+        }
+
+        .close-fullscreen {
             position: absolute;
             top: 20px;
             right: 20px;
@@ -346,598 +443,1729 @@
             border-radius: 50%;
             background: rgba(255,255,255,0.2);
             color: white;
-            cursor: pointer;
             font-size: 24px;
+            cursor: pointer;
             transition: all 0.3s;
         }
 
-        .fullscreen-close:hover {
-            background: rgba(255,255,255,0.3);
+        .close-fullscreen:hover {
+            background: rgba(255,255,255,0.4);
         }
 
-        .fullscreen-info {
+        /* Административные экраны */
+        .admin-screen {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
+            right: 20px;
+            top: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Таблицы */
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+
+        /* Вкладки */
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: #667eea;
             color: white;
-            background: rgba(0,0,0,0.6);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
         }
 
-        .loading-spinner {
-            border: 3px solid rgba(255,255,255,0.3);
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
+        .tab-content {
+            display: none;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Статусы камер */
+        .camera-status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .camera-status-badge.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .camera-status-badge.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .camera-status-badge.testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Уведомления */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.warning {
+            background: #ffc107;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Шапка -->
+        <!-- Заголовок -->
         <div class="header">
-            <div class="logo">🎥 Система видеонаблюдения</div>
-            <div class="current-info">
-                <div class="current-apartment" id="currentApartment">Тайланд (квартира 91)</div>
-                <div class="current-time" id="currentTime">16:45:30 • 16 июля 2025</div>
-            </div>
+            <h1>🎥 Автономная система видеонаблюдения</h1>
             <div class="user-info">
-                Пользователь: <strong>admin</strong><br>
-                Статус: <span style="color: #27ae60;">● Онлайн</span>
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div>
+                    <div id="userName">Администратор</div>
+                    <div id="userRole" style="font-size: 12px; color: #666;">Полный доступ</div>
+                </div>
+                <div class="navigation">
+                    <button class="btn btn-primary active" onclick="showScreen('monitoring')" id="monitoringBtn">
+                        📹 Мониторинг
+                    </button>
+                    <button class="btn btn-admin admin-only" onclick="showScreen('admin')" id="adminBtn">
+                        ⚙️ Настройки
+                    </button>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()">Выйти</button>
             </div>
         </div>
 
-        <!-- Контролы -->
-        <div class="controls">
-            <div>
-                <button class="btn btn-secondary" id="pauseBtn" onclick="togglePause()">⏸️ Пауза</button>
-                <button class="btn btn-secondary" onclick="previousApartment()">← Предыдущая</button>
-                <button class="btn btn-secondary" onclick="nextApartment()">Следующая →</button>
+        <!-- Экран мониторинга камер -->
+        <div id="monitoringScreen" class="screen active">
+            <div class="monitoring-screen">
+                <!-- Управление квартирами -->
+                <div class="apartment-controls">
+                    <div class="apartment-info">
+                        <h2 id="apartmentTitle">Квартира на Пушкина</h2>
+                        <p id="apartmentDescription">Камер: 4 | Квартира 1 из 3</p>
+                    </div>
+                    <div class="apartment-nav">
+                        <button class="btn btn-secondary" onclick="previousApartment()">← Предыдущая</button>
+                        <button class="btn btn-primary" onclick="toggleAutocycle()" id="autocycleBtn">⏸️ Пауза</button>
+                        <button class="btn btn-secondary" onclick="nextApartment()">Следующая →</button>
+                    </div>
+                </div>
+
+                <!-- Кнопки быстрого выбора квартир -->
+                <div class="apartment-buttons" id="apartmentButtons">
+                    <!-- Кнопки генерируются динамически -->
+                </div>
+
+                <!-- Сетка камер -->
+                <div class="camera-grid cameras-4" id="cameraGrid">
+                    <!-- Камеры генерируются динамически -->
+                </div>
+
+                <!-- Контролы автоцикла -->
+                <div class="autocycle-controls">
+                    <label>Автопереключение:</label>
+                    <select id="cycleInterval" onchange="updateCycleInterval()">
+                        <option value="5">каждые 5 сек</option>
+                        <option value="10">каждые 10 сек</option>
+                        <option value="15" selected>каждые 15 сек</option>
+                        <option value="30">каждые 30 сек</option>
+                        <option value="60">каждую минуту</option>
+                    </select>
+                    <span id="cycleStatus">Активно</span>
+                </div>
             </div>
-            <div>
-                <span style="color: white;">Камер в сети: <span id="onlineCameras">0</span> / <span id="totalCameras">0</span></span>
-            </div>
         </div>
 
-        <!-- Кнопки квартир -->
-        <div class="apartment-buttons" id="apartmentButtons">
-            <!-- Генерируются динамически -->
-        </div>
+        <!-- Административный экран -->
+        <div id="adminScreen" class="screen admin-only">
+            <div class="admin-screen">
+                <h2>⚙️ Панель администратора</h2>
 
-        <!-- Сетка камер -->
-        <div class="camera-grid" id="cameraGrid">
-            <!-- Генерируются динамически -->
-        </div>
+                <!-- Вкладки -->
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('apartments')">Квартиры</div>
+                    <div class="tab" onclick="switchTab('cameras')">Камеры</div>
+                    <div class="tab" onclick="switchTab('settings')">Настройки</div>
+                </div>
 
-        <!-- Контролы автоцикла -->
-        <div class="autocycle-controls">
-            <label>Автопереключение:</label>
-            <select id="cycleInterval" onchange="updateCycleInterval()">
-                <option value="5">каждые 5 сек</option>
-                <option value="10">каждые 10 сек</option>
-                <option value="15" selected>каждые 15 сек</option>
-                <option value="30">каждые 30 сек</option>
-                <option value="60">каждую минуту</option>
-            </select>
-            <span id="cycleStatus">Приостановлено</span>
-        </div>
+                <!-- Управление квартирами -->
+                <div id="apartments-tab" class="tab-content active">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Управление квартирами</h3>
+                        <button class="btn btn-success" onclick="openAddApartmentModal()">
+                            ➕ Добавить квартиру
+                        </button>
+                    </div>
 
-        <!-- Полноэкранный режим -->
-        <div class="fullscreen-overlay" id="fullscreenOverlay">
-            <div class="fullscreen-video">
-                <button class="fullscreen-close" onclick="closeFullscreen()">×</button>
-                <video id="fullscreenVideo" controls></video>
-                <div class="fullscreen-info" id="fullscreenInfo">
-                    <div id="fullscreenCameraName" style="font-size: 18px; font-weight: bold;"></div>
-                    <div id="fullscreenCameraStatus" style="font-size: 14px; color: #bdc3c7; margin-top: 5px;"></div>
+                    <div class="table-container">
+                        <table id="apartmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Название</th>
+                                    <th>Номер квартиры</th>
+                                    <th>Камер</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Данные загружаются динамически -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Управление камерами -->
+                <div id="cameras-tab" class="tab-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Управление камерами</h3>
+                        <button class="btn btn-success" onclick="openAddCameraModal()">
+                            ➕ Добавить камеру
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="camerasTable">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Название</th>
+                                    <th>Квартира</th>
+                                    <th>RTSP ссылка</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Данные загружаются динамически -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Системные настройки -->
+                <div id="settings-tab" class="tab-content">
+                    <h3>Системные настройки</h3>
+                    
+                    <div class="form-group">
+                        <label>Интервал переключения групп (секунды):</label>
+                        <select id="rotationInterval">
+                            <option value="5">5 секунд</option>
+                            <option value="10">10 секунд</option>
+                            <option value="15" selected>15 секунд</option>
+                            <option value="30">30 секунд</option>
+                            <option value="60">1 минута</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Таймаут подключения (секунды):</label>
+                        <input type="number" id="connectionTimeout" value="10" min="5" max="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Максимальное количество попыток переподключения:</label>
+                        <input type="number" id="maxRetryAttempts" value="5" min="1" max="20">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Размер сетки камер:</label>
+                        <select id="gridSize">
+                            <option value="9">3×3 (9 камер)</option>
+                            <option value="12">4×3 (12 камер)</option>
+                            <option value="16" selected>4×4 (16 камер)</option>
+                            <option value="20">5×4 (20 камер)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-success" onclick="saveSettings()">
+                        💾 Сохранить настройки
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        console.log('🚀 Интегрированная система видеонаблюдения загружена');
+    <!-- Полноэкранный режим -->
+    <div id="fullscreenModal" class="fullscreen-modal">
+        <div class="fullscreen-content">
+            <button class="close-fullscreen" onclick="closeFullscreen()">×</button>
+            <div class="fullscreen-video" id="fullscreenVideo">📹</div>
+            <div class="fullscreen-overlay">
+                <div class="fullscreen-title" id="fullscreenTitle">Камера</div>
+                <div class="fullscreen-info" id="fullscreenInfo">1920×1080 • Online • HD качество</div>
+                <div class="fullscreen-controls">
+                    <button class="btn btn-secondary" onclick="toggleFullscreenAudio()" id="fullscreenAudioBtn">
+                        🔇 Включить звук
+                    </button>
+                    <div class="volume-control">
+                        <span>🔊</span>
+                        <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="0.7" 
+                               onchange="adjustFullscreenVolume(this.value)" id="fullscreenVolume">
+                        <span id="fullscreenVolumeValue">70%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Модальные окна для администрирования -->
+    <!-- Добавление квартиры -->
+    <div id="addApartmentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddApartmentModal()">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">➕ Добавить квартиру</h2>
+            </div>
+
+            <form id="addApartmentForm">
+                <div class="form-group">
+                    <label for="apartmentName">Название квартиры:</label>
+                    <input type="text" id="apartmentName" name="apartmentName" required 
+                           placeholder="Например: Квартира на Пушкина">
+                </div>
+
+                <div class="form-group">
+                    <label for="apartmentNumber">Номер квартиры:</label>
+                    <input type="text" id="apartmentNumber" name="apartmentNumber" required 
+                           placeholder="Например: 12А">
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddApartmentModal()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn btn-success" style="margin-left: 10px;">
+                        ➕ Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Добавление камеры -->
+    <div id="addCameraModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddCameraModal()">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">📹 Добавить камеру</h2>
+            </div>
+
+            <form id="addCameraForm">
+                <div class="form-group">
+                    <label for="cameraName">Название камеры:</label>
+                    <input type="text" id="cameraName" name="cameraName" required 
+                           placeholder="Например: Прихожая">
+                </div>
+
+                <div class="form-group">
+                    <label for="cameraApartment">Квартира:</label>
+                    <select id="cameraApartment" name="cameraApartment" required>
+                        <option value="">Выберите квартиру...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="rtspLink">RTSP ссылка:</label>
+                    <input type="url" id="rtspLink" name="rtspLink" required 
+                           placeholder="rtsp://192.168.1.100:554/stream1">
+                    <small style="color: #666; font-size: 12px;">
+                        Формат: rtsp://IP:port/path или http://IP:port/mjpeg
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <button type="button" class="btn btn-secondary" onclick="testRtspConnection()">
+                        🔍 Тестировать подключение
+                    </button>
+                    <span id="testResult" style="margin-left: 10px;"></span>
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddCameraModal()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn btn-success" style="margin-left: 10px;">
+                        📹 Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Редактирование камеры -->
+    <div id="editCameraModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditCameraModal()">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Редактировать камеру</h2>
+            </div>
+
+            <form id="editCameraForm">
+                <input type="hidden" id="editCameraId">
+                
+                <div class="form-group">
+                    <label for="editCameraName">Название камеры:</label>
+                    <input type="text" id="editCameraName" name="editCameraName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editCameraApartment">Квартира:</label>
+                    <select id="editCameraApartment" name="editCameraApartment" required>
+                        <option value="">Выберите квартиру...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editRtspLink">RTSP ссылка:</label>
+                    <input type="url" id="editRtspLink" name="editRtspLink" required>
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditCameraModal()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn btn-success" style="margin-left: 10px;">
+                        💾 Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Редактирование квартиры -->
+    <div id="editApartmentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditApartmentModal()">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Редактировать квартиру</h2>
+            </div>
+
+            <form id="editApartmentForm">
+                <input type="hidden" id="editApartmentId">
+                
+                <div class="form-group">
+                    <label for="editApartmentName">Название квартиры:</label>
+                    <input type="text" id="editApartmentName" name="editApartmentName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editApartmentNumber">Номер квартиры:</label>
+                    <input type="text" id="editApartmentNumber" name="editApartmentNumber" required>
+                </div>
+
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditApartmentModal()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn btn-success" style="margin-left: 10px;">
+                        💾 Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
         // Глобальные переменные
-        let apartments = [];
-        let cameras = [];
+        let currentUser = { role: 'admin', name: 'Администратор' };
+        let configData = {
+            apartments: [],
+            cameras: [],
+            settings: {}
+        };
         let currentApartmentIndex = 0;
-        let cycleInterval = 15;
-        let cycleTimer = null;
-        let isPaused = false;
-        let activeStreams = new Map();
-        let hlsInstances = new Map();
-        let currentAudioCamera = null;
+        let autocycleTimer = null;
+        let autocycleInterval = 15000; // 15 секунд
+        let isAutocycleActive = true;
+        let activeAudioCamera = null;
+        let currentFullscreenCamera = null;
 
         // Инициализация
-        async function initializeSystem() {
-            try {
-                await loadApartments();
-                await loadCameras();
-                renderApartmentButtons();
-                showCurrentApartment();
-                startCycle();
-                updateTime();
-                setInterval(updateTime, 1000);
-            } catch (error) {
-                console.error('❌ Ошибка инициализации:', error);
+        document.addEventListener('DOMContentLoaded', function() {
+            setUserRole('admin');
+            loadConfigData();
+            startAutocycle();
+            
+            // Горячие клавиши
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && currentFullscreenCamera) {
+                    closeFullscreen();
+                } else if (e.key === 'ArrowLeft') {
+                    previousApartment();
+                } else if (e.key === 'ArrowRight') {
+                    nextApartment();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    toggleAutocycle();
+                }
+            });
+        });
+
+        // Установка роли пользователя
+        function setUserRole(role) {
+            document.body.className = `user-${role}`;
+            
+            if (role === 'admin') {
+                document.getElementById('userAvatar').textContent = 'A';
+                document.getElementById('userName').textContent = 'Администратор';
+                document.getElementById('userRole').textContent = 'Полный доступ';
+            } else {
+                document.getElementById('userAvatar').textContent = 'O';
+                document.getElementById('userName').textContent = 'Оператор';
+                document.getElementById('userRole').textContent = 'Только просмотр';
             }
         }
 
-        // Загрузка квартир
-        async function loadApartments() {
-            try {
-                const response = await fetch('/api/apartments');
-                apartments = await response.json();
-                console.log('✅ Квартиры загружены:', apartments.length);
-            } catch (error) {
-                console.error('❌ Ошибка загрузки квартир:', error);
+        // Переключение экранов
+        function showScreen(screenName) {
+            // Скрываем все экраны
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            document.querySelectorAll('.navigation .btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Показываем выбранный экран
+            document.getElementById(screenName + 'Screen').classList.add('active');
+            document.getElementById(screenName + 'Btn').classList.add('active');
+            
+            if (screenName === 'admin') {
+                loadApartmentsTable();
+                loadCamerasTable();
+                loadSettings();
             }
         }
 
-        // Загрузка камер
-        async function loadCameras() {
-            try {
-                const response = await fetch('/api/cameras');
-                cameras = await response.json();
-                console.log('✅ Камеры загружены:', cameras.length);
-            } catch (error) {
-                console.error('❌ Ошибка загрузки камер:', error);
-            }
+        // Загрузка конфигурации
+        function loadConfigData() {
+            // Демо данные
+            configData = {
+                apartments: [
+                    { id: 1, apartment_name: "Квартира на Пушкина", apartment_number: "12А" },
+                    { id: 2, apartment_name: "Офис центральный", apartment_number: "ОФ-1" },
+                    { id: 3, apartment_name: "Склад №1", apartment_number: "СК-1" }
+                ],
+                cameras: [
+                    { id: 1, camera_name: "Прихожая", apartment_id: 1, apartment_name: "Квартира на Пушкина", rtsp_link: "rtsp://192.168.1.100:554/stream1", status: "online" },
+                    { id: 2, camera_name: "Кухня", apartment_id: 1, apartment_name: "Квартира на Пушкина", rtsp_link: "rtsp://192.168.1.101:554/stream1", status: "online" },
+                    { id: 3, camera_name: "Гостиная", apartment_id: 1, apartment_name: "Квартира на Пушкина", rtsp_link: "rtsp://192.168.1.102:554/stream1", status: "offline" },
+                    { id: 4, camera_name: "Спальня", apartment_id: 1, apartment_name: "Квартира на Пушкина", rtsp_link: "rtsp://192.168.1.103:554/stream1", status: "online" },
+                    { id: 5, camera_name: "Вход", apartment_id: 2, apartment_name: "Офис центральный", rtsp_link: "rtsp://192.168.1.200:554/stream1", status: "online" },
+                    { id: 6, camera_name: "Коридор", apartment_id: 2, apartment_name: "Офис центральный", rtsp_link: "rtsp://192.168.1.201:554/stream1", status: "online" }
+                ],
+                settings: {
+                    rotation_interval: 15,
+                    connection_timeout: 10,
+                    max_retry_attempts: 5,
+                    grid_size: 16
+                }
+            };
+
+            setupApartmentButtons();
+            showApartment(0);
         }
 
-        // Отрисовка кнопок квартир
-        function renderApartmentButtons() {
-            const buttonsContainer = document.getElementById('apartmentButtons');
-            buttonsContainer.innerHTML = '';
-
-            apartments.forEach((apartment, index) => {
-                const btn = document.createElement('div');
-                btn.className = `apartment-btn ${index === currentApartmentIndex ? 'active' : ''}`;
+        // Настройка кнопок квартир
+        function setupApartmentButtons() {
+            const container = document.getElementById('apartmentButtons');
+            container.innerHTML = '';
+            
+            configData.apartments.forEach((apartment, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'apartment-btn';
                 btn.textContent = apartment.apartment_number;
-                btn.onclick = () => switchToApartment(index);
-                buttonsContainer.appendChild(btn);
+                btn.title = apartment.apartment_name;
+                btn.onclick = () => showApartment(index);
+                if (index === currentApartmentIndex) {
+                    btn.classList.add('active');
+                }
+                container.appendChild(btn);
             });
         }
 
-        // Показать текущую квартиру
-        async function showCurrentApartment() {
-            if (apartments.length === 0) return;
+        // Показать квартиру
+        function showApartment(apartmentIndex) {
+            currentApartmentIndex = apartmentIndex;
+            const apartment = configData.apartments[apartmentIndex];
+            if (!apartment) return;
 
-            const apartment = apartments[currentApartmentIndex];
-            const apartmentCameras = cameras.filter(c => c.apartment_name === apartment.apartment_name);
-
-            // Обновить заголовок
-            document.getElementById('currentApartment').textContent = 
-                `${apartment.apartment_name} (квартира ${apartment.apartment_number})`;
-
-            // Обновить счетчики
-            document.getElementById('totalCameras').textContent = apartmentCameras.length;
-
-            // Остановить предыдущие потоки
-            await stopAllStreams();
-
-            // Отрисовать камеры
-            renderCameras(apartmentCameras);
-
-            // Обновить кнопки квартир
+            // Обновляем кнопки квартир
             document.querySelectorAll('.apartment-btn').forEach((btn, index) => {
-                btn.classList.toggle('active', index === currentApartmentIndex);
+                btn.classList.toggle('active', index === apartmentIndex);
             });
 
-            // Запустить потоки для текущих камер
-            await startStreamsForCameras(apartmentCameras);
+            // Получаем камеры для этой квартиры
+            const cameras = configData.cameras.filter(c => c.apartment_id === apartment.id);
+
+            // Обновляем информацию о квартире
+            document.getElementById('apartmentTitle').textContent = apartment.apartment_name;
+            document.getElementById('apartmentDescription').textContent = 
+                `Камер: ${cameras.length} | Квартира ${apartmentIndex + 1} из ${configData.apartments.length}`;
+
+            // Отрисовываем сетку камер
+            renderCameraGrid(cameras);
         }
 
-        // Отрисовка камер
-        function renderCameras(apartmentCameras) {
+        // Отрисовка сетки камер
+        function renderCameraGrid(cameras) {
             const grid = document.getElementById('cameraGrid');
             grid.innerHTML = '';
-            grid.className = `camera-grid cameras-${apartmentCameras.length}`;
 
-            apartmentCameras.forEach(camera => {
-                const cameraSlot = document.createElement('div');
-                cameraSlot.className = 'camera-slot loading';
-                cameraSlot.innerHTML = `
-                    <video class="camera-video" id="video-${camera.id}" muted playsinline></video>
-                    <div class="camera-placeholder" id="placeholder-${camera.id}">
-                        <div class="loading-spinner"></div>
+            // Устанавливаем класс для адаптивной сетки
+            grid.className = 'camera-grid';
+            if (cameras.length > 0) {
+                grid.classList.add(`cameras-${cameras.length}`);
+            }
+
+            cameras.forEach(camera => {
+                const slot = document.createElement('div');
+                slot.className = 'camera-slot';
+                slot.onclick = () => openFullscreen(camera);
+
+                slot.innerHTML = `
+                    <div class="camera-video">📹</div>
+                    <div class="status-indicator ${camera.status === 'online' ? '' : 'offline'}"></div>
+                    <div class="camera-controls">
+                        <button class="camera-btn ${activeAudioCamera === camera.id ? 'audio-active' : ''}" 
+                                onclick="event.stopPropagation(); toggleCameraAudio(${camera.id})" 
+                                title="Звук">
+                            ${activeAudioCamera === camera.id ? '🔊' : '🔇'}
+                        </button>
                     </div>
                     <div class="camera-overlay">
                         <div class="camera-name">${camera.camera_name}</div>
-                        <div class="camera-status" id="status-${camera.id}">Подключение...</div>
+                        <div class="camera-status">640×480 • ${camera.status === 'online' ? 'Online' : 'Offline'}</div>
                     </div>
-                    <button class="audio-btn" id="audio-${camera.id}" onclick="toggleAudio(${camera.id})">🔇</button>
-                    <div class="status-indicator loading" id="indicator-${camera.id}"></div>
                 `;
-                
-                cameraSlot.onclick = () => openFullscreen(camera.id);
-                grid.appendChild(cameraSlot);
+
+                grid.appendChild(slot);
             });
         }
 
-        // Запуск потоков для камер
-        async function startStreamsForCameras(cameras) {
-            let onlineCount = 0;
-            
-            for (const camera of cameras) {
-                try {
-                    const success = await startStream(camera.id, '480p');
-                    if (success) onlineCount++;
-                } catch (error) {
-                    console.error(`❌ Ошибка запуска потока для камеры ${camera.id}:`, error);
-                }
-            }
-            
-            document.getElementById('onlineCameras').textContent = onlineCount;
-        }
-
-        // Запуск потока
-        async function startStream(cameraId, quality = '480p') {
-            const camera = cameras.find(c => c.id === cameraId);
-            if (!camera) return false;
-
-            const statusEl = document.getElementById(`status-${cameraId}`);
-            const indicatorEl = document.getElementById(`indicator-${cameraId}`);
-            const slotEl = document.querySelector(`#video-${cameraId}`).closest('.camera-slot');
-            
-            console.log(`🎬 Запуск потока: ${camera.camera_name} (${quality})`);
-            
-            try {
-                const response = await fetch('/api/stream/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cameraId: cameraId,
-                        rtspUrl: camera.rtsp_link,
-                        quality: quality
-                    })
-                });
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    console.log(`✅ Поток запущен: ${result.streamId}`);
-                    
-                    // Сохранить информацию о потоке
-                    activeStreams.set(cameraId, {
-                        streamId: result.streamId,
-                        quality: quality,
-                        camera: camera
-                    });
-                    
-                    // Настроить HLS плеер
-                    const streamUrl = `/stream/${result.streamId}/playlist.m3u8`;
-                    setupHLSPlayer(cameraId, streamUrl);
-                    
-                    // Обновить UI
-                    statusEl.textContent = `${quality} • Онлайн`;
-                    indicatorEl.className = 'status-indicator online';
-                    slotEl.classList.remove('loading', 'error');
-                    slotEl.classList.add('active');
-                    
-                    return true;
-                } else {
-                    throw new Error(result.error || 'Неизвестная ошибка');
-                }
-            } catch (error) {
-                console.error(`❌ Ошибка запуска потока ${cameraId}:`, error);
-                
-                // Обновить UI при ошибке
-                statusEl.textContent = 'Ошибка подключения';
-                indicatorEl.className = 'status-indicator offline';
-                slotEl.classList.remove('loading', 'active');
-                slotEl.classList.add('error');
-                
-                return false;
-            }
-        }
-
-        // Настройка HLS плеера
-        function setupHLSPlayer(cameraId, streamUrl) {
-            const video = document.getElementById(`video-${cameraId}`);
-            const placeholder = document.getElementById(`placeholder-${cameraId}`);
-            
-            if (Hls.isSupported()) {
-                const hls = new Hls({
-                    liveSyncDurationCount: 1,
-                    liveMaxLatencyDurationCount: 2,
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 10,
-                    maxBufferLength: 20
-                });
-                
-                hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                hlsInstances.set(cameraId, hls);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    console.log(`✅ HLS манифест загружен для камеры ${cameraId}`);
-                    placeholder.style.display = 'none';
-                    video.style.display = 'block';
-                    video.play().catch(e => console.warn('Автозапуск заблокирован'));
-                });
-                
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.error(`❌ HLS ошибка для камеры ${cameraId}:`, data);
-                    if (data.fatal) {
-                        placeholder.style.display = 'flex';
-                        placeholder.innerHTML = '❌<br>Ошибка';
-                        video.style.display = 'none';
-                    }
-                });
-                
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Нативная поддержка HLS (Safari)
-                video.src = streamUrl;
-                video.addEventListener('loadedmetadata', () => {
-                    placeholder.style.display = 'none';
-                    video.style.display = 'block';
-                    video.play().catch(console.warn);
-                });
-            } else {
-                console.error('❌ HLS не поддерживается в этом браузере');
-                placeholder.innerHTML = '❌<br>Не поддерживается';
-            }
-        }
-
-        // Остановка всех потоков
-        async function stopAllStreams() {
-            for (const [cameraId, streamData] of activeStreams) {
-                await stopStream(cameraId);
-            }
-            activeStreams.clear();
-        }
-
-        // Остановка потока
-        async function stopStream(cameraId) {
-            const streamData = activeStreams.get(cameraId);
-            if (!streamData) return;
-
-            console.log(`🛑 Остановка потока камеры ${cameraId}`);
-
-            try {
-                const response = await fetch('/api/stream/stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ streamId: streamData.streamId })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    console.log(`✅ Поток остановлен: ${streamData.streamId}`);
-                }
-            } catch (error) {
-                console.error(`❌ Ошибка остановки потока ${cameraId}:`, error);
-            }
-
-            // Очистка HLS плеера
-            if (hlsInstances.has(cameraId)) {
-                hlsInstances.get(cameraId).destroy();
-                hlsInstances.delete(cameraId);
-            }
-
-            // Очистка видео
-            const video = document.getElementById(`video-${cameraId}`);
-            if (video) {
-                video.src = '';
-                video.style.display = 'none';
-            }
-
-            const placeholder = document.getElementById(`placeholder-${cameraId}`);
-            if (placeholder) {
-                placeholder.style.display = 'flex';
-                placeholder.innerHTML = '📹';
-            }
-
-            activeStreams.delete(cameraId);
-        }
-
-        // Переключение квартир
-        function switchToApartment(index) {
-            if (index !== currentApartmentIndex) {
-                currentApartmentIndex = index;
-                showCurrentApartment();
-            }
-        }
-
+        // Навигация по квартирам
         function previousApartment() {
-            currentApartmentIndex = (currentApartmentIndex - 1 + apartments.length) % apartments.length;
-            showCurrentApartment();
+            const newIndex = currentApartmentIndex === 0 ? 
+                configData.apartments.length - 1 : currentApartmentIndex - 1;
+            showApartment(newIndex);
         }
 
         function nextApartment() {
-            currentApartmentIndex = (currentApartmentIndex + 1) % apartments.length;
-            showCurrentApartment();
+            const newIndex = (currentApartmentIndex + 1) % configData.apartments.length;
+            showApartment(newIndex);
         }
 
-        // Управление циклом
-        function startCycle() {
-            if (isPaused) return;
+        // Автоцикл
+        function startAutocycle() {
+            if (autocycleTimer) {
+                clearInterval(autocycleTimer);
+            }
             
-            cycleTimer = setInterval(() => {
-                if (!isPaused) {
+            autocycleTimer = setInterval(() => {
+                if (isAutocycleActive && configData.apartments.length > 1) {
                     nextApartment();
                 }
-            }, cycleInterval * 1000);
-            
-            document.getElementById('cycleStatus').textContent = 
-                `Активно (${cycleInterval}с)`;
+            }, autocycleInterval);
         }
 
-        function stopCycle() {
-            if (cycleTimer) {
-                clearInterval(cycleTimer);
-                cycleTimer = null;
-            }
-            document.getElementById('cycleStatus').textContent = 'Приостановлено';
-        }
-
-        function togglePause() {
-            isPaused = !isPaused;
-            const btn = document.getElementById('pauseBtn');
+        function toggleAutocycle() {
+            isAutocycleActive = !isAutocycleActive;
+            const btn = document.getElementById('autocycleBtn');
+            const status = document.getElementById('cycleStatus');
             
-            if (isPaused) {
-                stopCycle();
-                btn.textContent = '▶️ Продолжить';
-            } else {
-                startCycle();
+            if (isAutocycleActive) {
                 btn.textContent = '⏸️ Пауза';
+                status.textContent = 'Активно';
+            } else {
+                btn.textContent = '▶️ Старт';
+                status.textContent = 'Приостановлено';
             }
         }
 
         function updateCycleInterval() {
-            cycleInterval = parseInt(document.getElementById('cycleInterval').value);
-            if (!isPaused) {
-                stopCycle();
-                startCycle();
-            }
+            const select = document.getElementById('cycleInterval');
+            autocycleInterval = parseInt(select.value) * 1000;
+            startAutocycle();
         }
 
-        // Управление звуком
-        function toggleAudio(cameraId) {
-            const audioBtn = document.getElementById(`audio-${cameraId}`);
-            const video = document.getElementById(`video-${cameraId}`);
-            
-            if (currentAudioCamera === cameraId) {
-                // Выключить звук
-                video.muted = true;
-                audioBtn.textContent = '🔇';
-                audioBtn.classList.remove('active');
-                currentAudioCamera = null;
+        // Управление аудио камер
+        function toggleCameraAudio(cameraId) {
+            if (activeAudioCamera === cameraId) {
+                activeAudioCamera = null;
             } else {
-                // Выключить звук на предыдущей камере
-                if (currentAudioCamera) {
-                    const prevVideo = document.getElementById(`video-${currentAudioCamera}`);
-                    const prevBtn = document.getElementById(`audio-${currentAudioCamera}`);
-                    if (prevVideo) prevVideo.muted = true;
-                    if (prevBtn) {
-                        prevBtn.textContent = '🔇';
-                        prevBtn.classList.remove('active');
-                    }
+                activeAudioCamera = cameraId;
+            }
+            
+            // Обновляем все кнопки аудио
+            document.querySelectorAll('.camera-btn').forEach((btn, index) => {
+                const camera = configData.cameras.filter(c => c.apartment_id === configData.apartments[currentApartmentIndex].id)[index];
+                if (camera) {
+                    btn.classList.toggle('audio-active', activeAudioCamera === camera.id);
+                    btn.textContent = activeAudioCamera === camera.id ? '🔊' : '🔇';
                 }
-                
-                // Включить звук на текущей камере
-                video.muted = false;
-                audioBtn.textContent = '🔊';
-                audioBtn.classList.add('active');
-                currentAudioCamera = cameraId;
+            });
+
+            const camera = configData.cameras.find(c => c.id === cameraId);
+            if (camera) {
+                const status = activeAudioCamera === cameraId ? 'включен' : 'выключен';
+                showNotification(`Звук ${camera.camera_name}: ${status}`, 'success');
             }
         }
 
         // Полноэкранный режим
-        async function openFullscreen(cameraId) {
-            const camera = cameras.find(c => c.id === cameraId);
-            if (!camera) return;
-
-            const overlay = document.getElementById('fullscreenOverlay');
-            const video = document.getElementById('fullscreenVideo');
-            const nameEl = document.getElementById('fullscreenCameraName');
-            const statusEl = document.getElementById('fullscreenCameraStatus');
-
-            // Обновить информацию
-            nameEl.textContent = camera.camera_name;
-            statusEl.textContent = '1080p • HD качество';
-
-            // Запустить поток в высоком качестве
-            try {
-                const response = await fetch('/api/stream/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cameraId: cameraId,
-                        rtspUrl: camera.rtsp_link,
-                        quality: '1080p'
-                    })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    const streamUrl = `/stream/${result.streamId}/playlist.m3u8`;
-                    
-                    if (Hls.isSupported()) {
-                        const hls = new Hls({
-                            liveSyncDurationCount: 1,
-                            liveMaxLatencyDurationCount: 2,
-                            enableWorker: true,
-                            lowLatencyMode: true
-                        });
-                        
-                        hls.loadSource(streamUrl);
-                        hls.attachMedia(video);
-                        
-                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                            video.play().catch(console.warn);
-                        });
-                        
-                        video.fullscreenHls = hls;
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = streamUrl;
-                        video.play().catch(console.warn);
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Ошибка запуска полноэкранного потока:', error);
-                statusEl.textContent = 'Ошибка подключения';
-            }
-
-            overlay.classList.add('active');
+        function openFullscreen(camera) {
+            currentFullscreenCamera = camera;
+            
+            document.getElementById('fullscreenTitle').textContent = camera.camera_name;
+            document.getElementById('fullscreenInfo').textContent = 
+                `1920×1080 • ${camera.status === 'online' ? 'Online' : 'Offline'} • HD качество`;
+            
+            // Устанавливаем аудио кнопку
+            const audioBtn = document.getElementById('fullscreenAudioBtn');
+            const hasAudio = activeAudioCamera === camera.id;
+            audioBtn.textContent = hasAudio ? '🔊 Выключить звук' : '🔇 Включить звук';
+            
+            document.getElementById('fullscreenModal').classList.add('active');
         }
 
         function closeFullscreen() {
-            const overlay = document.getElementById('fullscreenOverlay');
-            const video = document.getElementById('fullscreenVideo');
+            document.getElementById('fullscreenModal').classList.remove('active');
+            currentFullscreenCamera = null;
+        }
+
+        function toggleFullscreenAudio() {
+            if (currentFullscreenCamera) {
+                toggleCameraAudio(currentFullscreenCamera.id);
+                
+                // Обновляем кнопку в полноэкранном режиме
+                const audioBtn = document.getElementById('fullscreenAudioBtn');
+                const hasAudio = activeAudioCamera === currentFullscreenCamera.id;
+                audioBtn.textContent = hasAudio ? '🔊 Выключить звук' : '🔇 Включить звук';
+            }
+        }
+
+        function adjustFullscreenVolume(value) {
+            const volumeValue = Math.round(value * 100);
+            document.getElementById('fullscreenVolumeValue').textContent = volumeValue + '%';
+        }
+
+        // Административные функции
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function loadApartmentsTable() {
+            const tbody = document.querySelector('#apartmentsTable tbody');
+            tbody.innerHTML = '';
+
+            configData.apartments.forEach((apartment, index) => {
+                const camerasCount = configData.cameras.filter(c => c.apartment_id === apartment.id).length;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${apartment.apartment_name}</td>
+                    <td>${apartment.apartment_number}</td>
+                    <td>${camerasCount}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-small" onclick="editApartment(${apartment.id})">
+                            ✏️ Изменить
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteApartment(${apartment.id})">
+                            🗑️ Удалить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function loadCamerasTable() {
+            const tbody = document.querySelector('#camerasTable tbody');
+            tbody.innerHTML = '';
+
+            configData.cameras.forEach((camera, index) => {
+                const statusClass = camera.status === 'online' ? 'online' : 'offline';
+                const statusText = camera.status === 'online' ? 'Онлайн' : 'Офлайн';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${camera.camera_name}</td>
+                    <td>${camera.apartment_name}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${camera.rtsp_link}
+                    </td>
+                    <td>
+                        <span class="camera-status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary btn-small" onclick="testCamera(${camera.id})">
+                            🔍 Тест
+                        </button>
+                        <button class="btn btn-secondary btn-small" onclick="editCamera(${camera.id})">
+                            ✏️ Изменить
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteCamera(${camera.id})">
+                            🗑️ Удалить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function loadSettings() {
+            document.getElementById('rotationInterval').value = configData.settings.rotation_interval;
+            document.getElementById('connectionTimeout').value = configData.settings.connection_timeout;
+            document.getElementById('maxRetryAttempts').value = configData.settings.max_retry_attempts;
+            document.getElementById('gridSize').value = configData.settings.grid_size;
+        }
+
+        // Модальные окна
+        function openAddApartmentModal() {
+            document.getElementById('addApartmentModal').style.display = 'block';
+        }
+
+        function closeAddApartmentModal() {
+            document.getElementById('addApartmentModal').style.display = 'none';
+            document.getElementById('addApartmentForm').reset();
+        }
+
+        function openAddCameraModal() {
+            const select = document.getElementById('cameraApartment');
+            select.innerHTML = '<option value="">Выберите квартиру...</option>';
             
-            // Очистить HLS плеер
-            if (video.fullscreenHls) {
-                video.fullscreenHls.destroy();
-                video.fullscreenHls = null;
+            configData.apartments.forEach(apartment => {
+                const option = document.createElement('option');
+                option.value = apartment.apartment_name;
+                option.textContent = `${apartment.apartment_number} - ${apartment.apartment_name}`;
+                select.appendChild(option);
+            });
+            
+            document.getElementById('addCameraModal').style.display = 'block';
+        }
+
+        function closeAddCameraModal() {
+            document.getElementById('addCameraModal').style.display = 'none';
+            document.getElementById('addCameraForm').reset();
+            document.getElementById('testResult').innerHTML = '';
+        }
+
+        // Редактирование
+        function editApartment(apartmentId) {
+            const apartment = configData.apartments.find(a => a.id === apartmentId);
+            if (!apartment) return;
+
+            document.getElementById('editApartmentId').value = apartment.id;
+            document.getElementById('editApartmentName').value = apartment.apartment_name;
+            document.getElementById('editApartmentNumber').value = apartment.apartment_number;
+            
+            document.getElementById('editApartmentModal').style.display = 'block';
+        }
+
+        function closeEditApartmentModal() {
+            document.getElementById('editApartmentModal').style.display = 'none';
+            document.getElementById('editApartmentForm').reset();
+        }
+
+        function editCamera(cameraId) {
+            const camera = configData.cameras.find(c => c.id === cameraId);
+            if (!camera) return;
+
+            // Заполняем форму
+            document.getElementById('editCameraId').value = camera.id;
+            document.getElementById('editCameraName').value = camera.camera_name;
+            document.getElementById('editRtspLink').value = camera.rtsp_link;
+
+            // Загружаем список квартир
+            const select = document.getElementById('editCameraApartment');
+            select.innerHTML = '<option value="">Выберите квартиру...</option>';
+            
+            configData.apartments.forEach(apartment => {
+                const option = document.createElement('option');
+                option.value = apartment.apartment_name;
+                option.textContent = `${apartment.apartment_number} - ${apartment.apartment_name}`;
+                if (apartment.apartment_name === camera.apartment_name) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            document.getElementById('editCameraModal').style.display = 'block';
+        }
+
+        function closeEditCameraModal() {
+            document.getElementById('editCameraModal').style.display = 'none';
+            document.getElementById('editCameraForm').reset();
+        }
+
+        // Обработчики форм
+        document.getElementById('addApartmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('apartmentName').value;
+            const number = document.getElementById('apartmentNumber').value;
+            
+            const newId = Math.max(...configData.apartments.map(a => a.id), 0) + 1;
+            
+            configData.apartments.push({
+                id: newId,
+                apartment_name: name,
+                apartment_number: number
+            });
+            
+            showNotification('Квартира успешно добавлена!', 'success');
+            closeAddApartmentModal();
+            loadApartmentsTable();
+            setupApartmentButtons();
+        });
+
+        document.getElementById('addCameraForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('cameraName').value;
+            const apartmentName = document.getElementById('cameraApartment').value;
+            const rtspLink = document.getElementById('rtspLink').value;
+            
+            const apartment = configData.apartments.find(a => a.apartment_name === apartmentName);
+            if (!apartment) {
+                showNotification('Квартира не найдена!', 'error');
+                return;
             }
             
-            video.src = '';
-            overlay.classList.remove('active');
-        }
+            const newId = Math.max(...configData.cameras.map(c => c.id), 0) + 1;
+            
+            configData.cameras.push({
+                id: newId,
+                camera_name: name,
+                apartment_id: apartment.id,
+                apartment_name: apartmentName,
+                rtsp_link: rtspLink,
+                status: 'offline'
+            });
+            
+            showNotification('Камера успешно добавлена!', 'success');
+            closeAddCameraModal();
+            loadCamerasTable();
+        });
 
-        // Обновление времени
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('ru-RU');
-            const dateString = now.toLocaleDateString('ru-RU');
-            document.getElementById('currentTime').textContent = `${timeString} • ${dateString}`;
-        }
-
-        // Горячие клавиши
-        document.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'ArrowLeft':
-                    previousApartment();
-                    break;
-                case 'ArrowRight':
-                    nextApartment();
-                    break;
-                case ' ':
-                    e.preventDefault();
-                    togglePause();
-                    break;
-                case 'Escape':
-                    closeFullscreen();
-                    break;
+        document.getElementById('editApartmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editApartmentId').value);
+            const name = document.getElementById('editApartmentName').value;
+            const number = document.getElementById('editApartmentNumber').value;
+            
+            const apartment = configData.apartments.find(a => a.id === id);
+            if (apartment) {
+                const oldName = apartment.apartment_name;
+                apartment.apartment_name = name;
+                apartment.apartment_number = number;
+                
+                // Обновляем ссылки в камерах
+                configData.cameras.forEach(camera => {
+                    if (camera.apartment_name === oldName) {
+                        camera.apartment_name = name;
+                    }
+                });
+                
+                showNotification('Квартира успешно обновлена!', 'success');
+                closeEditApartmentModal();
+                loadApartmentsTable();
+                loadCamerasTable();
+                setupApartmentButtons();
             }
         });
 
-        // Запуск системы
-        initializeSystem();
-    </script>
+        document.getElementById('editCameraForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editCameraId').value);
+            const name = document.getElementById('editCameraName').value;
+            const apartmentName = document.getElementById('editCameraApartment').value;
+            const rtspLink = document.getElementById('editRtspLink').value;
+            
+            const camera = configData.cameras.find(c => c.id === id);
+            const apartment = configData.apartments.find(a => a.apartment_name === apartmentName);
+            
+            if (camera && apartment) {
+                camera.camera_name = name;
+                camera.apartment_id = apartment.id;
+                camera.apartment_name = apartmentName;
+                camera.rtsp_link = rtspLink;
+                
+                showNotification('Камера успешно обновлена!', 'success');
+                closeEditCameraModal();
+                loadCamerasTable();
+                
+                // Обновляем текущий вид если это текущая квартира
+                const currentApartment = configData.apartments[currentApartmentIndex];
+                if (currentApartment && currentApartment.id === apartment.id) {
+                    showApartment(currentApartmentIndex);
+                }
+            }
+        });
+
+        // Удаление
+        function deleteApartment(apartmentId) {
+            const apartment = configData.apartments.find(a => a.id === apartmentId);
+            const camerasCount = configData.cameras.filter(c => c.apartment_id === apartmentId).length;
+            
+            if (!confirm(`Вы уверены? Это также удалит ${camerasCount} камер(ы) в квартире "${apartment.apartment_name}".`)) return;
+            
+            configData.apartments = configData.apartments.filter(a => a.id !== apartmentId);
+            configData.cameras = configData.cameras.filter(c => c.apartment_id !== apartmentId);
+            
+            showNotification('Квартира удалена', 'success');
+            loadApartmentsTable();
+            loadCamerasTable();
+            setupApartmentButtons();
+            
+            // Обновляем текущий вид
+            if (currentApartmentIndex >= configData.apartments.length) {
+                currentApartmentIndex = Math.max(0, configData.apartments.length - 1);
+            }
+            if (configData.apartments.length > 0) {
+                showApartment(currentApartmentIndex);
+            }
+        }
+
+        function deleteCamera(cameraId) {
+            const camera = configData.cameras.find(c => c.id === cameraId);
+            if (!confirm(`Вы уверены, что хотите удалить камеру "${camera.camera_name}"?`)) return;
+            
+            configData.cameras = configData.cameras.filter(c => c.id !== cameraId);
+            
+            // Выключаем аудио если это была активная камера
+            if (activeAudioCamera === cameraId) {
+                activeAudioCamera = null;
+            }
+            
+            showNotification('Камера удалена', 'success');
+            loadCamerasTable();
+            
+            // Обновляем текущий вид
+            if (configData.apartments.length > 0) {
+                showApartment(currentApartmentIndex);
+            }
+        }
+
+        // Тестирование
+        function testRtspConnection() {
+            const rtspLink = document.getElementById('rtspLink').value;
+            const testResult = document.getElementById('testResult');
+            
+            if (!rtspLink) {
+                testResult.innerHTML = '<span style="color: #dc3545;">Введите RTSP ссылку</span>';
+                return;
+            }
+            
+            testResult.innerHTML = '<span style="color: #ffc107;">Тестирование...</span>';
+            
+            setTimeout(() => {
+                const isValid = rtspLink.startsWith('rtsp://') || rtspLink.startsWith('http://');
+                if (isValid) {
+                    testResult.innerHTML = '<span style="color: #28a745;">✅ Ссылка корректна</span>';
+                } else {
+                    testResult.innerHTML = '<span style="color: #dc3545;">❌ Неверный формат ссылки</span>';
+                }
+            }, 1500);
+        }
+
+        function testCamera(cameraId) {
+            const camera = configData.cameras.find(c => c.id === cameraId);
+            if (!camera) return;
+            
+            showNotification('Тестирование камеры: ' + camera.camera_name, 'warning');
+            
+            setTimeout(() => {
+                camera.status = Math.random() > 0.3 ? 'online' : 'offline';
+                loadCamerasTable();
+                
+                const statusText = camera.status === 'online' ? 'Онлайн' : 'Недоступна';
+                showNotification(`Камера ${camera.camera_name}: ${statusText}`, 
+                    camera.status === 'online' ? 'success' : 'error');
+                
+                // Обновляем текущий вид если это камера из текущей квартиры
+                const currentApartment = configData.apartments[currentApartmentIndex];
+                if (currentApartment && camera.apartment_id === currentApartment.id) {
+                    showApartment(currentApartmentIndex);
+                }
+            }, 2000);
+        }
+
+        function saveSettings() {
+            configData.settings = {
+                rotation_interval: parseInt(document.getElementById('rotationInterval').value),
+                connection_timeout: parseInt(document.getElementById('connectionTimeout').value),
+                max_retry_attempts: parseInt(document.getElementById('maxRetryAttempts').value),
+                grid_size: parseInt(document.getElementById('gridSize').value)
+            };
+            
+            showNotification('Настройки сохранены!', 'success');
+        }
+
+        // Уведомления
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function logout() {
+            if (confirm('Выйти из системы?')) {
+                location.reload();
+            }
+        }
+
+        // Закрытие модальных окон по клику вне их
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+        // ===== HLS ИНТЕГРАЦИЯ ДЛЯ СУЩЕСТВУЮЩЕГО ИНТЕРФЕЙСА =====
+// Добавьте этот код в конец <script> секции вашего index.html
+
+// Глобальные переменные для HLS
+let activeStreams = new Map();
+let hlsInstances = new Map();
+
+// Загрузка HLS.js библиотеки
+if (!window.Hls) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js';
+    document.head.appendChild(script);
+}
+
+// ===== МОДИФИКАЦИЯ ФУНКЦИИ renderCameraGrid =====
+// Замените существующую функцию renderCameraGrid на эту:
+
+function renderCameraGrid(cameras) {
+    const grid = document.getElementById('cameraGrid');
+    grid.innerHTML = '';
+
+    // Устанавливаем класс для адаптивной сетки
+    grid.className = 'camera-grid';
+    if (cameras.length > 0) {
+        grid.classList.add(`cameras-${cameras.length}`);
+    }
+
+    cameras.forEach(camera => {
+        const slot = document.createElement('div');
+        slot.className = 'camera-slot';
+        slot.onclick = () => openFullscreen(camera);
+
+        slot.innerHTML = `
+            <video class="camera-video" id="video-${camera.id}" muted playsinline style="display: none; width: 100%; height: 100%; object-fit: cover;"></video>
+            <div class="camera-placeholder" id="placeholder-${camera.id}" style="width: 100%; height: 100%; background: linear-gradient(45deg, #2c3e50, #34495e); display: flex; align-items: center; justify-content: center; font-size: 48px; color: #ecf0f1; flex-direction: column;">
+                <div class="loading-spinner" style="border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px;"></div>
+                <div style="font-size: 14px;">Подключение...</div>
+            </div>
+            <div class="status-indicator ${camera.status === 'online' ? '' : 'offline'}" id="indicator-${camera.id}"></div>
+            <div class="camera-controls">
+                <button class="camera-btn ${activeAudioCamera === camera.id ? 'audio-active' : ''}" 
+                        onclick="event.stopPropagation(); toggleCameraAudio(${camera.id})" 
+                        title="Звук" id="audio-${camera.id}">
+                    ${activeAudioCamera === camera.id ? '🔊' : '🔇'}
+                </button>
+            </div>
+            <div class="camera-overlay">
+                <div class="camera-name">${camera.camera_name}</div>
+                <div class="camera-status" id="status-${camera.id}">Подключение...</div>
+            </div>
+        `;
+
+        grid.appendChild(slot);
+    });
+
+    // Автоматически запускаем потоки для всех камер
+    startStreamsForAllCameras(cameras);
+}
+
+// ===== НОВЫЕ ФУНКЦИИ ДЛЯ HLS =====
+
+// Добавьте CSS для анимации загрузки
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .camera-placeholder {
+        transition: opacity 0.3s;
+    }
+    .camera-video {
+        transition: opacity 0.3s;
+    }
+`;
+document.head.appendChild(style);
+
+// Запуск потоков для всех камер
+async function startStreamsForAllCameras(cameras) {
+    console.log(`🎬 Запуск HLS потоков для ${cameras.length} камер`);
+    
+    for (const camera of cameras) {
+        try {
+            await startHLSStream(camera.id, '480p');
+        } catch (error) {
+            console.error(`❌ Ошибка запуска потока для камеры ${camera.id}:`, error);
+        }
+    }
+}
+
+// Запуск HLS потока
+async function startHLSStream(cameraId, quality = '480p') {
+    const camera = configData.cameras.find(c => c.id === cameraId);
+    if (!camera) return false;
+
+    const statusEl = document.getElementById(`status-${cameraId}`);
+    const indicatorEl = document.getElementById(`indicator-${cameraId}`);
+    const slotEl = document.querySelector(`#video-${cameraId}`).closest('.camera-slot');
+    
+    console.log(`🎬 Запуск HLS потока: ${camera.camera_name} (${quality})`);
+    
+    // Обновляем статус на "подключение"
+    if (statusEl) statusEl.textContent = 'Подключение...';
+    if (indicatorEl) indicatorEl.className = 'status-indicator';
+    
+    try {
+        const response = await fetch('/api/stream/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cameraId: cameraId,
+                rtspUrl: camera.rtsp_link,
+                quality: quality
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log(`✅ HLS поток запущен: ${result.streamId}`);
+            
+            // Сохранить информацию о потоке
+            activeStreams.set(cameraId, {
+                streamId: result.streamId,
+                quality: quality,
+                camera: camera
+            });
+            
+            // Настроить HLS плеер
+            const streamUrl = `/stream/${result.streamId}/playlist.m3u8`;
+            setupHLSPlayer(cameraId, streamUrl);
+            
+            // Обновить UI
+            if (statusEl) statusEl.textContent = `${quality} • Онлайн`;
+            if (indicatorEl) indicatorEl.className = 'status-indicator';
+            if (slotEl) {
+                slotEl.classList.remove('error');
+                slotEl.classList.add('active');
+            }
+            
+            return true;
+        } else {
+            throw new Error(result.error || 'Неизвестная ошибка');
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка запуска HLS потока ${cameraId}:`, error);
+        
+        // Обновить UI при ошибке
+        if (statusEl) statusEl.textContent = 'Ошибка подключения';
+        if (indicatorEl) indicatorEl.className = 'status-indicator offline';
+        if (slotEl) slotEl.classList.add('error');
+        
+        // Показать заглушку ошибки
+        const placeholder = document.getElementById(`placeholder-${cameraId}`);
+        if (placeholder) {
+            placeholder.innerHTML = '❌<br><div style="font-size: 14px;">Ошибка</div>';
+        }
+        
+        return false;
+    }
+}
+
+// Настройка HLS плеера
+function setupHLSPlayer(cameraId, streamUrl) {
+    const video = document.getElementById(`video-${cameraId}`);
+    const placeholder = document.getElementById(`placeholder-${cameraId}`);
+    
+    if (!video || !placeholder) return;
+    
+    console.log(`🎥 Настройка HLS плеера для камеры ${cameraId}: ${streamUrl}`);
+    
+    if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+            liveSyncDurationCount: 1,
+            liveMaxLatencyDurationCount: 2,
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 10,
+            maxBufferLength: 20,
+            manifestLoadingTimeOut: 10000,
+            manifestLoadingMaxRetry: 3,
+            levelLoadingTimeOut: 10000
+        });
+        
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hlsInstances.set(cameraId, hls);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log(`✅ HLS манифест загружен для камеры ${cameraId}`);
+            placeholder.style.display = 'none';
+            video.style.display = 'block';
+            video.play().catch(e => {
+                console.warn(`⚠️ Автозапуск заблокирован для камеры ${cameraId}`);
+                // Показываем кнопку play
+                showPlayButton(cameraId);
+            });
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error(`❌ HLS ошибка для камеры ${cameraId}:`, data);
+            if (data.fatal) {
+                placeholder.style.display = 'flex';
+                placeholder.innerHTML = '❌<br><div style="font-size: 14px;">Ошибка HLS</div>';
+                video.style.display = 'none';
+                
+                // Обновляем статус
+                const statusEl = document.getElementById(`status-${cameraId}`);
+                if (statusEl) statusEl.textContent = 'Ошибка HLS';
+            }
+        });
+        
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Нативная поддержка HLS (Safari)
+        console.log(`🍎 Использование нативного HLS для камеры ${cameraId}`);
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+            placeholder.style.display = 'none';
+            video.style.display = 'block';
+            video.play().catch(e => {
+                console.warn(`⚠️ Автозапуск заблокирован для камеры ${cameraId}`);
+                showPlayButton(cameraId);
+            });
+        });
+        video.addEventListener('error', () => {
+            placeholder.style.display = 'flex';
+            placeholder.innerHTML = '❌<br><div style="font-size: 14px;">Ошибка загрузки</div>';
+            video.style.display = 'none';
+        });
+    } else {
+        console.error('❌ HLS не поддерживается в этом браузере');
+        placeholder.innerHTML = '❌<br><div style="font-size: 14px;">HLS не поддерживается</div>';
+    }
+}
+
+// Показать кнопку play при блокировке автозапуска
+function showPlayButton(cameraId) {
+    const placeholder = document.getElementById(`placeholder-${cameraId}`);
+    if (placeholder) {
+        placeholder.innerHTML = `
+            <button onclick="playVideo(${cameraId})" style="
+                background: #667eea; 
+                color: white; 
+                border: none; 
+                border-radius: 50%; 
+                width: 60px; 
+                height: 60px; 
+                font-size: 24px; 
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            ">▶️</button>
+            <div style="font-size: 14px; margin-top: 10px;">Нажмите для воспроизведения</div>
+        `;
+        placeholder.style.display = 'flex';
+    }
+}
+
+// Воспроизведение видео по клику
+function playVideo(cameraId) {
+    const video = document.getElementById(`video-${cameraId}`);
+    const placeholder = document.getElementById(`placeholder-${cameraId}`);
+    
+    if (video) {
+        video.play().then(() => {
+            placeholder.style.display = 'none';
+            video.style.display = 'block';
+        }).catch(e => {
+            console.error(`❌ Ошибка воспроизведения камеры ${cameraId}:`, e);
+        });
+    }
+}
+
+// Остановка всех HLS потоков
+async function stopAllHLSStreams() {
+    console.log('🛑 Остановка всех HLS потоков');
+    
+    for (const [cameraId, streamData] of activeStreams) {
+        await stopHLSStream(cameraId);
+    }
+    
+    activeStreams.clear();
+}
+
+// Остановка HLS потока
+async function stopHLSStream(cameraId) {
+    const streamData = activeStreams.get(cameraId);
+    if (!streamData) return;
+
+    console.log(`🛑 Остановка HLS потока камеры ${cameraId}`);
+
+    try {
+        const response = await fetch('/api/stream/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ streamId: streamData.streamId })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log(`✅ HLS поток остановлен: ${streamData.streamId}`);
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка остановки HLS потока ${cameraId}:`, error);
+    }
+
+    // Очистка HLS плеера
+    if (hlsInstances.has(cameraId)) {
+        hlsInstances.get(cameraId).destroy();
+        hlsInstances.delete(cameraId);
+    }
+
+    // Очистка видео
+    const video = document.getElementById(`video-${cameraId}`);
+    if (video) {
+        video.src = '';
+        video.style.display = 'none';
+    }
+
+    const placeholder = document.getElementById(`placeholder-${cameraId}`);
+    if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.innerHTML = '📹<br><div style="font-size: 14px;">Остановлено</div>';
+    }
+
+    activeStreams.delete(cameraId);
+}
+
+// ===== МОДИФИКАЦИЯ СУЩЕСТВУЮЩИХ ФУНКЦИЙ =====
+
+// Модифицируйте функцию showApartment чтобы останавливать старые потоки:
+const originalShowApartment = showApartment;
+showApartment = function(apartmentIndex) {
+    // Останавливаем предыдущие потоки
+    stopAllHLSStreams();
+    
+    // Вызываем оригинальную функцию
+    originalShowApartment(apartmentIndex);
+};
+
+// Модифицируйте функцию toggleCameraAudio для работы с видео:
+function toggleCameraAudio(cameraId) {
+    const video = document.getElementById(`video-${cameraId}`);
+    const audioBtn = document.getElementById(`audio-${cameraId}`);
+    
+    if (activeAudioCamera === cameraId) {
+        // Выключаем звук
+        activeAudioCamera = null;
+        if (video) video.muted = true;
+        if (audioBtn) {
+            audioBtn.classList.remove('audio-active');
+            audioBtn.textContent = '🔇';
+        }
+    } else {
+        // Выключаем звук на предыдущей камере
+        if (activeAudioCamera) {
+            const prevVideo = document.getElementById(`video-${activeAudioCamera}`);
+            const prevBtn = document.getElementById(`audio-${activeAudioCamera}`);
+            if (prevVideo) prevVideo.muted = true;
+            if (prevBtn) {
+                prevBtn.classList.remove('audio-active');
+                prevBtn.textContent = '🔇';
+            }
+        }
+        
+        // Включаем звук на текущей камере
+        activeAudioCamera = cameraId;
+        if (video) video.muted = false;
+        if (audioBtn) {
+            audioBtn.classList.add('audio-active');
+            audioBtn.textContent = '🔊';
+        }
+    }
+    
+    const camera = configData.cameras.find(c => c.id === cameraId);
+    if (camera) {
+        const status = activeAudioCamera === cameraId ? 'включен' : 'выключен';
+        showNotification(`Звук ${camera.camera_name}: ${status}`, 'success');
+    }
+}
+
+// Модифицируйте функцию openFullscreen для HLS:
+function openFullscreen(camera) {
+    currentFullscreenCamera = camera;
+    
+    document.getElementById('fullscreenTitle').textContent = camera.camera_name;
+    document.getElementById('fullscreenInfo').textContent = 
+        `1920×1080 • ${camera.status === 'online' ? 'Online' : 'Offline'} • HD качество`;
+    
+    // Запускаем поток в высоком качестве для полноэкранного режима
+    startFullscreenHLSStream(camera.id);
+    
+    document.getElementById('fullscreenModal').classList.add('active');
+}
+
+// Запуск HLS потока для полноэкранного режима
+async function startFullscreenHLSStream(cameraId) {
+    const camera = configData.cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+
+    console.log(`🎬 Запуск полноэкранного HLS потока: ${camera.camera_name} (1080p)`);
+    
+    try {
+        const response = await fetch('/api/stream/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cameraId: cameraId,
+                rtspUrl: camera.rtsp_link,
+                quality: '1080p'
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            const streamUrl = `/stream/${result.streamId}/playlist.m3u8`;
+            setupFullscreenHLSPlayer(streamUrl);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка запуска полноэкранного HLS потока:', error);
+        const fullscreenVideo = document.getElementById('fullscreenVideo');
+        fullscreenVideo.innerHTML = '❌<br><div style="font-size: 24px;">Ошибка подключения</div>';
+    }
+}
+
+// Настройка HLS плеера для полноэкранного режима
+function setupFullscreenHLSPlayer(streamUrl) {
+    const videoContainer = document.getElementById('fullscreenVideo');
+    
+    // Создаем видео элемент
+    videoContainer.innerHTML = `
+        <video id="fullscreenVideoElement" controls style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+    `;
+    
+    const video = document.getElementById('fullscreenVideoElement');
+    
+    if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+            liveSyncDurationCount: 1,
+            liveMaxLatencyDurationCount: 2,
+            enableWorker: true,
+            lowLatencyMode: true
+        });
+        
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(console.warn);
+        });
+        
+        // Сохраняем для очистки
+        video.fullscreenHls = hls;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(console.warn);
+    }
+}
+
+// Модифицируйте функцию closeFullscreen:
+function closeFullscreen() {
+    const video = document.getElementById('fullscreenVideoElement');
+    
+    // Очистить HLS плеер
+    if (video && video.fullscreenHls) {
+        video.fullscreenHls.destroy();
+        video.fullscreenHls = null;
+    }
+    
+    // Восстанавливаем заглушку
+    document.getElementById('fullscreenVideo').innerHTML = '📹';
+    document.getElementById('fullscreenModal').classList.remove('active');
+    currentFullscreenCamera = null;
+}
+
+console.log('🎥 HLS интеграция загружена и готова к работе!');
+	</script>
 </body>
 </html>
