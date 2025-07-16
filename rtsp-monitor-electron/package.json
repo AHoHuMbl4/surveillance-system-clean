@@ -13,15 +13,21 @@
     "clean": "rimraf dist build",
     "rebuild": "npm run clean && npm run build"
   },
-  "keywords": ["rtsp", "surveillance", "electron"],
+  "keywords": [
+    "rtsp",
+    "surveillance",
+    "electron"
+  ],
   "author": "RTSP Monitor Team",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^latest",
-    "electron-builder": "^latest",
-    "rimraf": "^latest"
+    "electron": "^32.0.0",
+    "electron-builder": "^24.0.0",
+    "rimraf": "^5.0.0"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "hls.js": "^1.4.10"
   },
   "build": {
