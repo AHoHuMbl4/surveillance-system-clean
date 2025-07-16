@@ -1,0 +1,17 @@
+{
+  "hls": {
+    "enabled": true,
+    "path": "/stream",
+    "cors": {
+      "enabled": true,
+      "origin": "*"
+    },
+    "cache": {
+      "enabled": false
+    },
+    "mime_types": {
+      ".m3u8": "application/vnd.apple.mpegurl",
+      ".ts": "video/mp2t"
+    }
+  }
+}

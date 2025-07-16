@@ -638,45 +638,6 @@ class AutonomousServer {
      */
     async handleStreamRequest(req, res, pathname) {
         try {
-            // Обработка HLS потоков напрямую
-            const streamMatch = pathname.match(/^\/stream\/([^\/]+)\/(.*)/);
-            if (streamMatch) {
-                const streamId = streamMatch[1];
-                const fileName = streamMatch[2];
-                
-                // Путь к HLS файлам
-                const hlsPath = path.join(__dirname, 'temp_streams', streamId, fileName);
-                
-                console.log(`📡 HLS запрос: ${streamId}/${fileName} -> ${hlsPath}`);
-                
-                // Проверка существования файла
-                if (!fs.existsSync(hlsPath)) {
-                    console.log(`❌ HLS файл не найден: ${hlsPath}`);
-                    this.send404(res);
-                    return;
-                }
-                
-                // Определение MIME типа
-                const ext = path.extname(fileName).toLowerCase();
-                const mimeTypes = {
-                    '.m3u8': 'application/vnd.apple.mpegurl',
-                    '.ts': 'video/mp2t'
-                };
-                
-                const contentType = mimeTypes[ext] || 'application/octet-stream';
-                
-                // Отправка файла
-                const stream = fs.createReadStream(hlsPath);
-                res.writeHead(200, {
-                    'Content-Type': contentType,
-                    'Cache-Control': 'no-cache',
-                    'Access-Control-Allow-Origin': '*'
-                });
-                
-                stream.pipe(res);
-                return;
-            }
-            
             // Проксирование к RTSP менеджеру
             const streamPath = pathname.replace('/stream/', '');
             
