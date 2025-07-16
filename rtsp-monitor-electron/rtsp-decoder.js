@@ -1,215 +1,230 @@
 /**
- * Реальный RTSP декодер для Electron приложения
- * Использует FFmpeg для конвертации RTSP в HLS потоки
+ * RTSP Decoder - Исправленная версия с правильным созданием директорий
+ * Решает проблему "Failed to open file" и "No such file or directory"
  */
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { spawn } from 'child_process';
+import { EventEmitter } from 'events';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-class RTSPDecoder {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+class RTSPDecoder extends EventEmitter {
     constructor() {
+        super();
         this.activeStreams = new Map();
-        this.outputDir = './temp_streams';
-        this.ffmpegPath = this.getFFmpegPath();
+        this.ffmpegPath = this.findFFmpeg();
+        this.tempStreamsDir = path.join(__dirname, 'temp_streams');
         
-        // Создаем директорию для временных файлов
-        if (!fs.existsSync(this.outputDir)) {
-            fs.mkdirSync(this.outputDir, { recursive: true });
-        }
+        // КРИТИЧНО: Создаем главную директорию сразу
+        this.ensureMainDirectory();
         
         console.log('🎥 RTSP Decoder инициализирован');
-        console.log('🎬 FFmpeg путь:', this.ffmpegPath);
+        console.log(`📁 Директория потоков: ${this.tempStreamsDir}`);
+        console.log(`🔧 FFmpeg путь: ${this.ffmpegPath}`);
     }
 
-    /**
-     * Определение пути к FFmpeg
-     */
-    getFFmpegPath() {
-        // Сначала проверяем системный FFmpeg
-        const systemPaths = [
+    findFFmpeg() {
+        const possiblePaths = [
             '/usr/bin/ffmpeg',
-            '/usr/local/bin/ffmpeg',
-            'ffmpeg'  // В PATH
+            '/usr/local/bin/ffmpeg', 
+            'ffmpeg',
+            path.join(__dirname, 'ffmpeg', 'linux-x64', 'ffmpeg'),
+            path.join(__dirname, 'ffmpeg', 'win64', 'ffmpeg.exe'),
+            path.join(__dirname, 'ffmpeg', 'macos-x64', 'ffmpeg'),
+            path.join(__dirname, 'ffmpeg', 'macos-arm64', 'ffmpeg')
         ];
-        
-        for (const ffmpegPath of systemPaths) {
+
+        for (const ffmpegPath of possiblePaths) {
             try {
-                // Проверяем доступность
-                require('child_process').execSync(`${ffmpegPath} -version`, { 
-                    stdio: 'pipe',
-                    timeout: 5000 
-                });
-                console.log(`✅ Найден системный FFmpeg: ${ffmpegPath}`);
-                return ffmpegPath;
+                if (fs.existsSync(ffmpegPath)) {
+                    fs.accessSync(ffmpegPath, fs.constants.X_OK);
+                    console.log(`✅ Найден FFmpeg: ${ffmpegPath}`);
+                    return ffmpegPath;
+                }
             } catch (error) {
-                // Продолжаем поиск
+                // Пропускаем
             }
         }
-        
-        // Если системный не найден, используем встроенный
-        const platform = process.platform;
-        const arch = process.arch;
-        
-        let platformDir = '';
-        let ffmpegName = 'ffmpeg';
-        
-        switch (platform) {
-            case 'linux':
-                platformDir = arch === 'arm64' ? 'linux-arm64' : 'linux-x64';
-                break;
-            case 'win32':
-                platformDir = arch === 'x64' ? 'win64' : 'win32';
-                ffmpegName = 'ffmpeg.exe';
-                break;
-            case 'darwin':
-                platformDir = arch === 'arm64' ? 'macos-arm64' : 'macos-x64';
-                break;
-            default:
-                platformDir = 'linux-x64';
-        }
-        
-        const embeddedPath = path.join(__dirname, 'ffmpeg', platformDir, ffmpegName);
-        console.log(`🔧 Используем встроенный FFmpeg: ${embeddedPath}`);
-        return embeddedPath;
+
+        console.log('⚠️ FFmpeg не найден, используем системный');
+        return 'ffmpeg';
     }
 
-    /**
-     * Запуск RTSP потока и конвертация в HLS
-     */
-    async startStream(camera, quality = 'low') {
-        const streamId = `${camera.id}_${quality}`;
-        
-        if (this.activeStreams.has(streamId)) {
-            console.log(`⚠️ Поток ${streamId} уже активен`);
-            return this.activeStreams.get(streamId);
-        }
-
-        console.log(`🚀 Запуск RTSP потока: ${camera.camera_name} (${quality})`);
-        console.log(`📡 RTSP URL: ${camera.rtsp_link}`);
-
-        // Создаем директорию для потока
-        const streamDir = path.join(this.outputDir, streamId);
-        if (!fs.existsSync(streamDir)) {
-            fs.mkdirSync(streamDir, { recursive: true });
-        }
-
-        const playlistPath = path.join(streamDir, 'playlist.m3u8');
-
-        // Параметры качества
-        const qualitySettings = quality === 'high' ? {
-            resolution: '1920x1080',
-            bitrate: '2M',
-            fps: '25'
-        } : {
-            resolution: '854x480', 
-            bitrate: '800k',
-            fps: '15'
-        };
-
-        // FFmpeg команда для RTSP → HLS
-        const ffmpegArgs = [
-            '-re',  // Читать входной поток с нативным frame rate
-            '-rtsp_transport', 'tcp',
-            '-i', camera.rtsp_link,
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-tune', 'zerolatency',
-            '-s', qualitySettings.resolution,
-            '-b:v', qualitySettings.bitrate,
-            '-r', qualitySettings.fps,
-            '-g', '30',
-            '-sc_threshold', '0',
-            '-f', 'hls',
-            '-hls_time', '2',
-            '-hls_list_size', '3',
-            '-hls_flags', 'delete_segments+independent_segments',
-            '-hls_allow_cache', '0',
-            playlistPath
-        ];
-
-        console.log(`🎬 FFmpeg команда: ${this.ffmpegPath} ${ffmpegArgs.join(' ')}`);
-
+    ensureMainDirectory() {
         try {
+            if (!fs.existsSync(this.tempStreamsDir)) {
+                fs.mkdirSync(this.tempStreamsDir, { recursive: true });
+                console.log(`📁 Создана главная директория: ${this.tempStreamsDir}`);
+            }
+            
+            fs.accessSync(this.tempStreamsDir, fs.constants.W_OK);
+            console.log('✅ Права записи в temp_streams подтверждены');
+            
+        } catch (error) {
+            console.error(`❌ Критическая ошибка: ${error.message}`);
+            throw new Error(`Невозможно создать temp_streams: ${error.message}`);
+        }
+    }
+
+    ensureStreamDirectory(streamId) {
+        const streamDir = path.join(this.tempStreamsDir, streamId);
+        
+        try {
+            if (!fs.existsSync(streamDir)) {
+                fs.mkdirSync(streamDir, { recursive: true });
+                console.log(`📁 Создана директория потока: ${streamDir}`);
+            }
+            
+            fs.accessSync(streamDir, fs.constants.W_OK);
+            return streamDir;
+            
+        } catch (error) {
+            console.error(`❌ Ошибка создания ${streamId}: ${error.message}`);
+            throw new Error(`Невозможно создать директорию ${streamId}: ${error.message}`);
+        }
+    }
+
+    async startStream(streamId, rtspUrl, quality = 'low') {
+        try {
+            console.log(`🚀 Запуск RTSP потока: ${streamId}`);
+            console.log(`📡 RTSP URL: ${rtspUrl}`);
+
+            if (this.activeStreams.has(streamId)) {
+                await this.stopStream(streamId);
+            }
+
+            // КРИТИЧНО: Создаем директорию потока ПЕРЕД запуском FFmpeg
+            const streamDir = this.ensureStreamDirectory(streamId);
+            
+            const playlistPath = path.join(streamDir, 'playlist.m3u8');
+            const segmentPattern = path.join(streamDir, 'playlist%03d.ts');
+
+            const ffmpegArgs = this.buildFFmpegArgs(rtspUrl, playlistPath, segmentPattern, quality);
+            
+            console.log(`🔧 FFmpeg команда: ${this.ffmpegPath} ${ffmpegArgs.join(' ')}`);
+            
             const ffmpegProcess = spawn(this.ffmpegPath, ffmpegArgs, {
-                stdio: ['pipe', 'pipe', 'pipe']
+                stdio: ['ignore', 'pipe', 'pipe'],
+                cwd: __dirname
             });
 
             const streamData = {
                 id: streamId,
-                camera: camera,
-                quality: quality,
                 process: ffmpegProcess,
-                playlistPath: playlistPath,
+                rtspUrl: rtspUrl,
+                quality: quality,
+                status: 'starting',
+                startTime: Date.now(),
                 streamDir: streamDir,
-                status: 'connecting',
-                startTime: Date.now()
+                playlistPath: playlistPath
             };
 
-            // Обработчики процесса
-            this.setupFFmpegHandlers(streamData);
-
             this.activeStreams.set(streamId, streamData);
+            this.setupFFmpegHandlers(streamData);
             
             console.log(`✅ RTSP поток ${streamId} запущен`);
             return streamData;
 
         } catch (error) {
-            console.error(`❌ Ошибка запуска FFmpeg для ${streamId}:`, error);
+            console.error(`❌ Ошибка запуска ${streamId}:`, error);
             throw error;
         }
     }
 
-    /**
-     * Настройка обработчиков FFmpeg процесса
-     */
-    setupFFmpegHandlers(streamData) {
-        const { process: ffmpegProcess, id: streamId, camera } = streamData;
+    buildFFmpegArgs(rtspUrl, playlistPath, segmentPattern, quality) {
+        const baseArgs = [
+            '-rtsp_transport', 'tcp',
+            '-allowed_media_types', 'video',
+            '-i', rtspUrl,
+            '-fflags', '+genpts',
+            '-avoid_negative_ts', 'make_zero',
+            '-max_delay', '0',
+            '-reconnect', '1',
+            '-reconnect_streamed', '1',
+            '-reconnect_delay_max', '2'
+        ];
 
-        ffmpegProcess.stdout.on('data', (data) => {
-            // FFmpeg обычно выводит в stderr, но на всякий случай
-            console.log(`📊 FFmpeg stdout ${streamId}:`, data.toString().trim());
-        });
+        const qualityArgs = quality === 'high' ? [
+            '-vf', 'scale=1920:1080',
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-b:v', '2000k',
+            '-maxrate', '2500k',
+            '-bufsize', '3000k'
+        ] : [
+            '-vf', 'scale=854:480',
+            '-c:v', 'libx264', 
+            '-preset', 'veryfast',
+            '-b:v', '800k',
+            '-maxrate', '1000k',
+            '-bufsize', '1500k'
+        ];
+
+        const hlsArgs = [
+            '-f', 'hls',
+            '-hls_time', '2',
+            '-hls_list_size', '3',
+            '-hls_flags', 'delete_segments',
+            '-hls_segment_filename', segmentPattern,
+            '-hls_start_number_source', 'epoch',
+            '-y',
+            playlistPath
+        ];
+
+        return [...baseArgs, ...qualityArgs, ...hlsArgs];
+    }
+
+    setupFFmpegHandlers(streamData) {
+        const { process: ffmpegProcess, id: streamId } = streamData;
 
         ffmpegProcess.stderr.on('data', (data) => {
             const output = data.toString();
             
-            // Ищем признаки успешного подключения
             if (output.includes('fps=') || output.includes('bitrate=')) {
-                if (streamData.status === 'connecting') {
-                    console.log(`✅ RTSP поток подключен: ${camera.camera_name}`);
+                if (streamData.status === 'starting') {
+                    console.log(`✅ RTSP поток подключен: ${streamId}`);
                     streamData.status = 'streaming';
+                    this.emit('streamStarted', streamId);
                 }
             }
             
-            // Логируем только важные сообщения
+            if (output.includes('Failed to open file') || output.includes('No such file or directory')) {
+                console.error(`❌ FFmpeg error ${streamId}: Проблема с директориями`);
+                try {
+                    this.ensureStreamDirectory(streamId);
+                    console.log(`🔄 Директория ${streamId} пересоздана`);
+                } catch (error) {
+                    console.error(`❌ Не удалось пересоздать: ${error.message}`);
+                }
+            }
+            
             if (output.includes('error') || output.includes('failed')) {
                 console.error(`❌ FFmpeg error ${streamId}:`, output.trim());
-                streamData.status = 'error';
             }
         });
 
         ffmpegProcess.on('close', (code) => {
             console.log(`🛑 FFmpeg процесс ${streamId} завершен с кодом ${code}`);
             this.activeStreams.delete(streamId);
-            
-            // Очистка временных файлов
             this.cleanupStream(streamData);
+            this.emit('streamStopped', streamId, code);
         });
 
         ffmpegProcess.on('error', (error) => {
             console.error(`💥 Ошибка процесса FFmpeg ${streamId}:`, error);
             streamData.status = 'error';
+            this.emit('streamError', streamId, error);
         });
     }
 
-    /**
-     * Остановка потока
-     */
     async stopStream(streamId) {
         const streamData = this.activeStreams.get(streamId);
         if (!streamData) {
-            console.warn(`⚠️ Поток ${streamId} не найден для остановки`);
+            console.warn(`⚠️ Поток ${streamId} не найден`);
             return;
         }
 
@@ -218,7 +233,6 @@ class RTSPDecoder {
         if (streamData.process) {
             streamData.process.kill('SIGTERM');
             
-            // Принудительное завершение через 5 сек
             setTimeout(() => {
                 if (!streamData.process.killed) {
                     streamData.process.kill('SIGKILL');
@@ -230,13 +244,9 @@ class RTSPDecoder {
         this.activeStreams.delete(streamId);
     }
 
-    /**
-     * Очистка временных файлов потока
-     */
     cleanupStream(streamData) {
         try {
             if (fs.existsSync(streamData.streamDir)) {
-                // Удаляем все файлы потока
                 const files = fs.readdirSync(streamData.streamDir);
                 files.forEach(file => {
                     fs.unlinkSync(path.join(streamData.streamDir, file));
@@ -250,64 +260,28 @@ class RTSPDecoder {
         }
     }
 
-    /**
-     * Получение URL HLS потока
-     */
-    getStreamURL(streamId) {
-        const streamData = this.activeStreams.get(streamId);
-        if (!streamData) {
-            return null;
+    getStreamsStatus() {
+        const status = {};
+        for (const [streamId, streamData] of this.activeStreams) {
+            status[streamId] = {
+                status: streamData.status,
+                quality: streamData.quality,
+                startTime: streamData.startTime,
+                uptime: Date.now() - streamData.startTime,
+                playlistExists: fs.existsSync(streamData.playlistPath)
+            };
         }
-        
-        return `/stream/${streamId}/playlist.m3u8`;
+        return status;
     }
 
-    /**
-     * Проверка доступности HLS файла
-     */
-    isStreamReady(streamId) {
-        const streamData = this.activeStreams.get(streamId);
-        if (!streamData) {
-            return false;
-        }
-        
-        return fs.existsSync(streamData.playlistPath);
-    }
-
-    /**
-     * Остановка всех потоков
-     */
     async stopAllStreams() {
-        console.log('🛑 Остановка всех RTSP потоков...');
-        
         const streamIds = Array.from(this.activeStreams.keys());
+        console.log(`🛑 Остановка всех потоков (${streamIds.length})`);
+        
         for (const streamId of streamIds) {
             await this.stopStream(streamId);
         }
-        
-        console.log('✅ Все потоки остановлены');
-    }
-
-    /**
-     * Получение статуса всех потоков
-     */
-    getStreamsStatus() {
-        const status = [];
-        
-        for (const [streamId, streamData] of this.activeStreams.entries()) {
-            status.push({
-                id: streamId,
-                camera: streamData.camera.camera_name,
-                quality: streamData.quality,
-                status: streamData.status,
-                uptime: Date.now() - streamData.startTime,
-                url: this.getStreamURL(streamId),
-                ready: this.isStreamReady(streamId)
-            });
-        }
-        
-        return status;
     }
 }
 
-module.exports = RTSPDecoder;
+export default RTSPDecoder;

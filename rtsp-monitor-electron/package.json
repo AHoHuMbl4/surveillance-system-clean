@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "rtsp-monitor-electron",
   "version": "1.0.0",
   "description": "Автономная система видеонаблюдения",
@@ -35,7 +36,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "${productName}-${version}-Windows-Portable.${ext}"
@@ -44,10 +47,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "${productName}-${version}-Linux.${ext}"
     }
+  },
+  "dependencies": {
+    "hls.js": "^1.6.7"
   }
 }
