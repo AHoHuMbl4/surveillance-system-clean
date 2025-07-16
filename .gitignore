@@ -1,0 +1,12 @@
+build/
+temp_streams/
+output/
+node_modules/
+*.ts
+*.m3u8
+*.mp4
+*.backup
+*.log
+*.zip
+*.tar.gz
+ffmpeg/

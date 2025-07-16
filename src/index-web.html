@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система видеонаблюдения</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .login-card.hidden {
+            display: none;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .test-accounts {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .test-accounts code {
+            background: #e1e5fe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+
+        .main-screen {
+            display: none;
+            background: #1a1a1a;
+            color: white;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn, .control-btn {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .logout-btn:hover {
+            background: #d32f2f;
+        }
+
+        .control-btn {
+            background: #4CAF50;
+            margin-left: 10px;
+        }
+
+        .control-btn:hover {
+            background: #45a049;
+        }
+
+        .control-btn.active {
+            background: #FF9800;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 1px solid #333;
+        }
+
+        .apartment-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .apartment-btn {
+            padding: 8px 16px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .apartment-btn:hover {
+            background: #555;
+        }
+
+        .apartment-btn.active {
+            background: #667eea;
+        }
+
+        .cycle-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .camera-grid {
+            flex: 1;
+            display: grid;
+            gap: 2px;
+            padding: 2px;
+            background: #000;
+            overflow: hidden;
+        }
+
+        /* Адаптивные сетки в зависимости от количества камер */
+        .camera-grid.cameras-1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .camera-grid.cameras-2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .camera-grid.cameras-3 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: 1fr;
+        }
+
+        .camera-grid.cameras-4 {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .camera-grid.cameras-5, .camera-grid.cameras-6 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .camera-grid.cameras-7, .camera-grid.cameras-8, .camera-grid.cameras-9 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+
+        .camera-grid.cameras-10, .camera-grid.cameras-11, .camera-grid.cameras-12 {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+
+        .camera-grid.cameras-13, .camera-grid.cameras-14, .camera-grid.cameras-15, .camera-grid.cameras-16 {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+
+        .camera-slot {
+            background: #222;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .camera-slot:hover {
+            border-color: #667eea;
+        }
+
+        .camera-slot.offline {
+            border-color: #f44336;
+        }
+
+        .camera-slot.active {
+            border-color: #4CAF50;
+        }
+
+        .camera-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333),
+                        linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 2rem;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            color: white;
+            padding: 10px 8px 5px;
+            font-size: 11px;
+        }
+
+        .camera-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .camera-status {
+            font-size: 9px;
+            opacity: 0.8;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        .status-indicator.offline {
+            background: #f44336;
+        }
+
+        .status-indicator.loading {
+            background: #FF9800;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-overlay.active {
+            display: flex;
+        }
+
+        .fullscreen-video {
+            max-width: 90%;
+            max-height: 90%;
+            background: #222;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        .fullscreen-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .mock-video {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, 
+                #1e3c72 0%, 
+                #2a5298 25%, 
+                #1e3c72 50%, 
+                #2a5298 75%, 
+                #1e3c72 100%);
+            background-size: 40px 40px;
+            animation: moveBackground 4s linear infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        @keyframes moveBackground {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        .mock-video.camera-2 {
+            background: linear-gradient(45deg, #134e5e 0%, #71b280 50%, #134e5e 100%);
+        }
+
+        .mock-video.camera-3 {
+            background: linear-gradient(45deg, #8360c3 0%, #2ebf91 50%, #8360c3 100%);
+        }
+
+        .mock-video.camera-4 {
+            background: linear-gradient(45deg, #ff6b6b 0%, #4ecdc4 50%, #ff6b6b 100%);
+        }
+
+        .mock-video.camera-5 {
+            background: linear-gradient(45deg, #ffeaa7 0%, #74b9ff 50%, #ffeaa7 100%);
+        }
+
+        .mock-video.camera-6 {
+            background: linear-gradient(45deg, #fd79a8 0%, #fdcb6e 50%, #fd79a8 100%);
+        }
+
+        .mock-video.camera-7 {
+            background: linear-gradient(45deg, #a29bfe 0%, #6c5ce7 50%, #a29bfe 100%);
+        }
+
+        .mock-video.camera-8 {
+            background: linear-gradient(45deg, #00b894 0%, #00cec9 50%, #00b894 100%);
+        }
+
+        .mock-video.camera-9 {
+            background: linear-gradient(45deg, #e17055 0%, #fab1a0 50%, #e17055 100%);
+        }
+
+        .mock-video.camera-10 {
+            background: linear-gradient(45deg, #0984e3 0%, #74b9ff 50%, #0984e3 100%);
+        }
+
+        .mock-video.camera-11 {
+            background: linear-gradient(45deg, #fd79a8 0%, #e84393 50%, #fd79a8 100%);
+        }
+
+        .mock-video.camera-12 {
+            background: linear-gradient(45deg, #00b894 0%, #55a3ff 50%, #00b894 100%);
+        }
+
+        .mock-video.camera-13 {
+            background: linear-gradient(45deg, #fdcb6e 0%, #e17055 50%, #fdcb6e 100%);
+        }
+
+        .mock-video.camera-14 {
+            background: linear-gradient(45deg, #6c5ce7 0%, #a29bfe 50%, #6c5ce7 100%);
+        }
+
+        .mock-video.camera-15 {
+            background: linear-gradient(45deg, #00cec9 0%, #55efc4 50%, #00cec9 100%);
+        }
+
+        .mock-video.camera-16 {
+            background: linear-gradient(45deg, #ff7675 0%, #fd79a8 50%, #ff7675 100%);
+        }
+
+        .mock-video.camera-17 {
+            background: linear-gradient(45deg, #74b9ff 0%, #0984e3 50%, #74b9ff 100%);
+        }
+
+        .mock-video.camera-18 {
+            background: linear-gradient(45deg, #55efc4 0%, #00b894 50%, #55efc4 100%);
+        }
+
+        .mock-video.camera-19 {
+            background: linear-gradient(45deg, #fab1a0 0%, #e17055 50%, #fab1a0 100%);
+        }
+
+        .mock-video.camera-20 {
+            background: linear-gradient(45deg, #81ecec 0%, #00cec9 50%, #81ecec 100%);
+        }
+
+        .mock-video.camera-21 {
+            background: linear-gradient(45deg, #a29bfe 0%, #fd79a8 50%, #a29bfe 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Форма входа -->
+        <div class="login-card" id="loginCard">
+            <div class="logo">📹</div>
+            <h1>Авторизация</h1>
+            <p class="subtitle">Система видеонаблюдения</p>
+            
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+            <div class="success-message" id="successMessage" style="display: none;"></div>
+            
+            <form id="loginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="username">Логин:</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" value="admin">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password" value="admin123">
+                </div>
+                
+                <button type="button" class="login-btn" id="loginBtn" onclick="handleLogin()">
+                    Войти в систему
+                </button>
+            </form>
+            
+            <div class="test-accounts">
+                <strong>Тестовые аккаунты:</strong><br>
+                Администратор: <code>admin / admin123</code><br>
+                Оператор: <code>operator1 / operator123</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- Главный экран -->
+    <div class="main-screen" id="mainScreen">
+        <div class="header">
+            <h1>🏠 Система видеонаблюдения</h1>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar"></div>
+                <div>
+                    <div id="userName"></div>
+                    <div id="userRole" style="font-size: 12px; color: #ccc;"></div>
+                </div>
+                <button class="control-btn" id="cycleBtn" onclick="toggleCycle()">▶ Авто</button>
+                <button class="logout-btn" id="logoutBtn">Выйти</button>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="apartment-selector">
+                <span style="color: #ccc; font-size: 12px;">Квартиры:</span>
+                <div id="apartmentButtons"></div>
+            </div>
+            <div class="cycle-controls">
+                <span style="color: #ccc; font-size: 12px;">Интервал:</span>
+                <select id="cycleInterval" style="background: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 4px;">
+                    <option value="5000">5 сек</option>
+                    <option value="10000" selected>10 сек</option>
+                    <option value="15000">15 сек</option>
+                    <option value="30000">30 сек</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="camera-grid" id="cameraGrid">
+            <!-- Камеры будут добавлены динамически -->
+        </div>
+    </div>
+
+    <!-- Полноэкранный режим -->
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="fullscreen-video" id="fullscreenVideo">
+            <button class="fullscreen-close" onclick="closeFullscreen()">×</button>
+            📹
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let currentUser = null;
+        let configData = null;
+        let currentApartmentId = null;
+        let cycleInterval = null;
+        let isCycling = false;
+        let currentCameraInFullscreen = null;
+
+        // Функция для API вызовов
+        async function invoke(endpoint, payload) {
+            const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
+            const response = await fetch(url, {
+                method: payload ? 'POST' : 'GET',
+                headers: payload ? { 'Content-Type': 'application/json' } : {},
+                body: payload ? JSON.stringify(payload) : undefined
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return response.json();
+        }
+
+        // DOM элементы
+        const loginCard = document.getElementById('loginCard');
+        const mainScreen = document.getElementById('mainScreen');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const loginBtn = document.getElementById('loginBtn');
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Веб-приложение загружено');
+            setupEventListeners();
+            
+            // Тест соединения
+            try {
+                const status = await invoke('system-status');
+                console.log('✅ Соединение с сервером установлено:', status);
+            } catch (error) {
+                console.error('❌ Ошибка соединения:', error);
+                showError('Ошибка соединения с сервером');
+            }
+        });
+
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
+        }
+
+        // Функция обработки входа
+        async function handleLogin() {
+            console.log('🔐 Начало процесса авторизации...');
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            setLoading(true);
+            hideMessages();
+            
+            try {
+                const response = await invoke('login', {
+                    login: username,
+                    password: password
+                });
+                
+                if (response.success && response.user) {
+                    currentUser = response.user;
+                    showSuccess('Вход выполнен успешно!');
+                    
+                    setTimeout(() => {
+                        showMainScreen();
+                        loadSystemData();
+                    }, 1000);
+                } else {
+                    showError(response.message || 'Ошибка авторизации');
+                }
+            } catch (error) {
+                console.error('❌ Ошибка входа:', error);
+                showError('Ошибка соединения с сервером: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Обработка выхода из системы
+        async function handleLogout() {
+            try {
+                await invoke('logout');
+                currentUser = null;
+                showLoginScreen();
+                console.log('🚪 Выход выполнен');
+            } catch (error) {
+                console.error('Ошибка выхода:', error);
+            }
+        }
+
+        // Показать экран входа
+        function showLoginScreen() {
+            document.querySelector('.container').style.display = 'flex';
+            loginCard.classList.remove('hidden');
+            mainScreen.classList.remove('active');
+            document.getElementById('username').value = 'admin';
+            document.getElementById('password').value = 'admin123';
+            hideMessages();
+        }
+
+        // Показать главный экран
+        function showMainScreen() {
+            document.querySelector('.container').style.display = 'none';
+            mainScreen.classList.add('active');
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            updateUserInfo();
+        }
+
+        // Обновление информации о пользователе
+        function updateUserInfo() {
+            if (!currentUser) return;
+            
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+            const userRole = document.getElementById('userRole');
+            
+            if (userAvatar) {
+                userAvatar.textContent = currentUser.login.charAt(0).toUpperCase();
+            }
+            
+            if (userName) {
+                userName.textContent = currentUser.login;
+            }
+            
+            if (userRole) {
+                const roleText = currentUser.role === 'Admin' ? 'Администратор' : 'Оператор';
+                userRole.textContent = roleText;
+            }
+        }
+
+        // Загрузка данных системы
+        async function loadSystemData() {
+            try {
+                const config = await invoke('config');
+                configData = config;
+                console.log('📋 Конфигурация системы:', config);
+                
+                setupApartmentButtons();
+                if (config.apartments.length > 0) {
+                    showApartment(config.apartments[0].id);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+                showError('Ошибка загрузки конфигурации: ' + error.message);
+            }
+        }
+
+        // Настройка кнопок квартир
+        function setupApartmentButtons() {
+            const container = document.getElementById('apartmentButtons');
+            container.innerHTML = '';
+            
+            configData.apartments.forEach(apartment => {
+                const btn = document.createElement('button');
+                btn.className = 'apartment-btn';
+                btn.textContent = apartment.apartment_number;
+                btn.title = apartment.apartment_name;
+                btn.onclick = () => showApartment(apartment.id);
+                container.appendChild(btn);
+            });
+        }
+
+        // Показать камеры квартиры
+        function showApartment(apartmentId) {
+            currentApartmentId = apartmentId;
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.apartment-btn').forEach((btn, index) => {
+                btn.classList.toggle('active', configData.apartments[index].id === apartmentId);
+            });
+            
+            // Фильтруем камеры для выбранной квартиры
+            const apartment = configData.apartments.find(apt => apt.id === apartmentId);
+            const cameras = configData.cameras.filter(cam => cam.apartment_name === apartment.apartment_name);
+            
+            renderCameraGrid(cameras, apartment);
+        }
+
+        // Отрисовка сетки камер
+        function renderCameraGrid(cameras, apartment) {
+            const grid = document.getElementById('cameraGrid');
+            grid.innerHTML = '';
+            
+            // Убираем все классы камер и добавляем нужный
+            grid.className = 'camera-grid';
+            const cameraCount = cameras.length;
+            if (cameraCount > 0) {
+                grid.classList.add(`cameras-${cameraCount}`);
+            }
+            
+            // Создаем слоты только для реальных камер
+            cameras.forEach((camera, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'camera-slot active';
+                
+                const video = document.createElement('div');
+                video.className = `mock-video camera-${camera.id}`;
+                video.textContent = '📹';
+                
+                const overlay = document.createElement('div');
+                overlay.className = 'camera-overlay';
+                overlay.innerHTML = `
+                    <div class="camera-name">${camera.camera_name}</div>
+                    <div class="camera-status">640×480 • Online</div>
+                `;
+                
+                const indicator = document.createElement('div');
+                indicator.className = 'status-indicator';
+                
+                slot.appendChild(video);
+                slot.appendChild(overlay);
+                slot.appendChild(indicator);
+                
+                // Обработчик клика для полноэкранного режима
+                slot.onclick = () => openFullscreen(camera);
+                
+                grid.appendChild(slot);
+            });
+            
+            console.log(`📊 Показано ${cameraCount} камер для "${apartment.apartment_name}" в сетке ${getGridDescription(cameraCount)}`);
+        }
+
+        // Получить описание сетки
+        function getGridDescription(count) {
+            if (count === 1) return '1×1';
+            if (count === 2) return '2×1';
+            if (count === 3) return '3×1';
+            if (count === 4) return '2×2';
+            if (count <= 6) return '3×2';
+            if (count <= 9) return '3×3';
+            if (count <= 12) return '4×3';
+            return '4×4';
+        }
+
+        // Открыть полноэкранный режим
+        function openFullscreen(camera) {
+            currentCameraInFullscreen = camera;
+            const overlay = document.getElementById('fullscreenOverlay');
+            const video = document.getElementById('fullscreenVideo');
+            
+            console.log(`🔍 Переключение камеры "${camera.camera_name}" в полноэкранный режим: 640×480 → 1920×1080`);
+            
+            video.innerHTML = `
+                <button class="fullscreen-close" onclick="closeFullscreen()">×</button>
+                <div class="mock-video camera-${camera.id}" style="width: 85vw; height: 70vh; font-size: 6rem;">
+                    📹
+                </div>
+                <div style="position: absolute; bottom: 20px; left: 20px; color: white;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${camera.camera_name}</div>
+                    <div style="font-size: 1rem; opacity: 0.8;">1920×1080 • Online • Полный экран</div>
+                </div>
+                <div style="position: absolute; top: 20px; left: 20px; color: #4CAF50; font-size: 0.9rem; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px;">
+                    📡 HD поток активен
+                </div>
+            `;
+            
+            overlay.classList.add('active');
+        }
+
+        // Закрыть полноэкранный режим
+        function closeFullscreen() {
+            if (currentCameraInFullscreen) {
+                console.log(`📱 Возврат камеры "${currentCameraInFullscreen.camera_name}" в сетку: 1920×1080 → 640×480`);
+            }
+            document.getElementById('fullscreenOverlay').classList.remove('active');
+            currentCameraInFullscreen = null;
+        }
+
+        // Переключение автоцикла
+        function toggleCycle() {
+            const btn = document.getElementById('cycleBtn');
+            
+            if (isCycling) {
+                // Остановить цикл
+                clearInterval(cycleInterval);
+                isCycling = false;
+                btn.textContent = '▶ Авто';
+                btn.classList.remove('active');
+            } else {
+                // Запустить цикл
+                const interval = parseInt(document.getElementById('cycleInterval').value);
+                startCycle(interval);
+                btn.textContent = '⏸ Стоп';
+                btn.classList.add('active');
+            }
+        }
+
+        // Запуск автоцикла
+        function startCycle(interval) {
+            isCycling = true;
+            let currentIndex = 0;
+            
+            cycleInterval = setInterval(() => {
+                if (configData && configData.apartments.length > 0) {
+                    showApartment(configData.apartments[currentIndex].id);
+                    currentIndex = (currentIndex + 1) % configData.apartments.length;
+                }
+            }, interval);
+        }
+
+        // Функции отображения сообщений
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        function setLoading(loading) {
+            if (loading) {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Вход...';
+                loginCard.classList.add('loading');
+            } else {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти в систему';
+                loginCard.classList.remove('loading');
+            }
+        }
+
+        // Обработка клавиш
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentCameraInFullscreen) {
+                closeFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>
