@@ -22,4 +22,4 @@ git push
 
 #  запуск node
 
-node npm start
+
