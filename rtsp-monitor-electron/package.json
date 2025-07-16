@@ -1,61 +1,52 @@
 {
-  "type": "module",
   "name": "rtsp-monitor-electron",
   "version": "1.0.0",
-  "description": "Автономная система видеонаблюдения",
+  "description": "RTSP Monitor Desktop Application",
   "main": "electron-main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron .",
-    "test-server": "node rtsp-server.js",
-    "build": "./node_modules/.bin/electron-builder",
-    "build:win": "./node_modules/.bin/electron-builder --win",
-    "build:linux": "./node_modules/.bin/electron-builder --linux",
-    "clean": "rimraf dist build installers node_modules/.cache"
+    "test-server": "node rtsp-server.mjs",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac",
+    "clean": "rimraf dist build",
+    "rebuild": "npm run clean && npm run build"
   },
+  "keywords": ["rtsp", "surveillance", "electron"],
+  "author": "RTSP Monitor Team",
+  "license": "MIT",
   "devDependencies": {
-    "electron": "^27.1.3",
-    "electron-builder": "^24.8.1",
-    "rimraf": "^5.0.5"
+    "electron": "^latest",
+    "electron-builder": "^latest",
+    "rimraf": "^latest"
+  },
+  "dependencies": {
+    "hls.js": "^1.4.10"
   },
   "build": {
     "appId": "com.rtspmonitor.app",
     "productName": "RTSP Monitor",
     "directories": {
-      "output": "installers"
+      "output": "dist"
     },
     "files": [
-      "electron-main.js",
-      "simple-server.js",
-      "autonomous-server.js",
-      "autonomous-rtsp-manager.js",
-      "index.html",
-      "ffmpeg/**/*"
+      "**/*",
+      "!backup_*",
+      "!test-*.sh",
+      "!*.backup"
     ],
     "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "${productName}-${version}-Windows-Portable.${ext}"
+      "target": "nsis",
+      "icon": "icon.ico"
     },
     "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "${productName}-${version}-Linux.${ext}"
+      "target": "AppImage",
+      "icon": "icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.icns"
     }
-  },
-  "dependencies": {
-    "hls.js": "^1.6.7"
   }
 }
