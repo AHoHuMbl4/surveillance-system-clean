@@ -663,7 +663,7 @@
             color: #333;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/hls.min.js"></script>
+    <script src="libs/hls.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1703,6 +1703,7 @@ let hlsInstances = new Map();
 
 // Запуск HLS потока для камеры
 // ИСПРАВЛЕННАЯ функция startHLSStream
+// Исправленная версия startHLSStream с ожиданием файлов
 async function startHLSStream(camera, quality = 'low') {
     const cameraId = camera.id;
     
@@ -1736,27 +1737,92 @@ async function startHLSStream(camera, quality = 'low') {
             const video = document.getElementById(`video-${cameraId}`);
             const placeholder = document.getElementById(`placeholder-${cameraId}`);
             
+            if (placeholder) {
+                placeholder.innerHTML = `
+                    <div class="loading-spinner" style="border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+                    <div style="font-size: 14px; margin-top: 10px;">Подготовка видео...</div>
+                `;
+            }
+            
             if (video && Hls.isSupported()) {
                 const hls = new Hls({
-                    debug: true,
+                    debug: false,
                     liveSyncDurationCount: 3,
                     liveMaxLatencyDurationCount: 5,
                     enableWorker: true,
-                    lowLatencyMode: true
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
+                    maxBufferSize: 60 * 1000 * 1000,
+                    maxBufferHole: 0.5,
+                    highBufferWatchdogPeriod: 2,
+                    nudgeOffset: 0.1,
+                    nudgeMaxRetry: 10,
+                    maxFragLookUpTolerance: 0.25,
+                    liveDurationInfinity: true,
+                    liveBackBufferLength: 0
                 });
                 
-                setTimeout(() => {
-                    console.log(`⏳ Загрузка HLS потока: ${streamUrl}`);
-                    hls.loadSource(streamUrl);
-                    hls.attachMedia(video);
-                }, 2000);
+                // Функция для попытки загрузки с повторами
+                let retryCount = 0;
+                const maxRetries = 10;
+                const retryDelay = 1000; // 1 секунда между попытками
+                
+                function tryLoadStream() {
+                    console.log(`⏳ Попытка загрузки потока ${retryCount + 1}/${maxRetries}...`);
+                    
+                    // Сначала проверяем доступность файла
+                    fetch(streamUrl)
+                        .then(response => {
+                            if (response.ok) {
+                                console.log(`✅ Playlist доступен, загружаем в HLS.js`);
+                                hls.loadSource(streamUrl);
+                                hls.attachMedia(video);
+                            } else if (retryCount < maxRetries - 1) {
+                                retryCount++;
+                                setTimeout(tryLoadStream, retryDelay);
+                            } else {
+                                throw new Error('Playlist недоступен после всех попыток');
+                            }
+                        })
+                        .catch(error => {
+                            if (retryCount < maxRetries - 1) {
+                                retryCount++;
+                                setTimeout(tryLoadStream, retryDelay);
+                            } else {
+                                console.error('❌ Не удалось загрузить поток:', error);
+                                if (placeholder) {
+                                    placeholder.style.display = 'flex';
+                                    placeholder.innerHTML = `
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 48px;">❌</div>
+                                            <div style="font-size: 14px; margin-top: 10px;">Не удалось загрузить поток</div>
+                                            <button onclick="startHLSStream(${JSON.stringify(camera).replace(/"/g, '&quot;')}, '${quality}')" 
+                                                    style="margin-top: 10px; padding: 5px 10px; cursor: pointer;">
+                                                🔄 Повторить
+                                            </button>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        });
+                }
+                
+                // Начинаем попытки загрузки через 3 секунды
+                setTimeout(tryLoadStream, 3000);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log(`✅ HLS манифест загружен для ${camera.camera_name}`);
                     video.play().catch(e => {
                         console.warn('Автовоспроизведение заблокировано:', e);
                         if (placeholder) {
-                            placeholder.innerHTML = '<button onclick="document.getElementById(\'video-' + cameraId + '\').play()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">▶️ Нажмите для воспроизведения</button>';
+                            placeholder.innerHTML = `
+                                <button onclick="document.getElementById('video-${cameraId}').play()" 
+                                        style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #667eea; color: white; border: none; border-radius: 5px;">
+                                    ▶️ Нажмите для воспроизведения
+                                </button>
+                            `;
                         }
                     });
                     
@@ -1765,9 +1831,10 @@ async function startHLSStream(camera, quality = 'low') {
                 });
                 
                 hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.error(`❌ HLS ошибка для ${camera.camera_name}:`, data);
                     if (data.fatal) {
-                        handleHLSError(data, hls, cameraId);
+                        console.error(`❌ Фатальная HLS ошибка для ${camera.camera_name}:`, data);
+                    } else {
+                        console.warn(`⚠️ HLS предупреждение для ${camera.camera_name}:`, data);
                     }
                 });
                 
@@ -1776,6 +1843,7 @@ async function startHLSStream(camera, quality = 'low') {
                 const indicator = document.getElementById(`indicator-${cameraId}`);
                 if (indicator) {
                     indicator.classList.remove('offline');
+                    indicator.classList.add('loading');
                 }
                 
                 return true;
@@ -1789,6 +1857,7 @@ async function startHLSStream(camera, quality = 'low') {
         return false;
     }
 }
+
 
 
 // Остальные HLS функции...

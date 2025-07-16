@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Локальный тест HLS</title>
+    <script src="libs/hls.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        video { width: 640px; height: 480px; background: #000; border: 2px solid #333; }
+        .status { margin: 10px 0; padding: 10px; background: #2a2a2a; border-radius: 5px; }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #667eea; color: white; border: none; border-radius: 5px; margin: 5px; }
+        button:hover { background: #5a67d8; }
+    </style>
+</head>
+<body>
+    <h1>🎥 Локальный тест HLS потока</h1>
+    <video id="video" controls></video>
+    <div class="status" id="status">Готов к тестированию</div>
+    
+    <button onclick="testLocalStream()">Тестировать локальный поток</button>
+    <button onclick="stopStream()">Остановить поток</button>
+    
+    <script>
+        let currentStreamId = null;
+        let hls = null;
+        
+        async function testLocalStream() {
+            const status = document.getElementById('status');
+            status.innerHTML = '⏳ Запуск потока...';
+            
+            try {
+                // Запускаем поток
+                const response = await fetch('http://localhost:3000/api/stream/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        streamId: 'test_local_' + Date.now(),
+                        rtspUrl: 'rtsp://185.70.184.101:8554/cam91-99',
+                        quality: 'low'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentStreamId = data.streamId;
+                    status.innerHTML = '<span class="success">✅ Поток запущен!</span><br>Stream ID: ' + data.streamId;
+                    
+                    // Ждем немного перед загрузкой
+                    setTimeout(() => {
+                        const streamUrl = `/stream/${data.streamId}/playlist.m3u8`;
+                        playHLS(streamUrl);
+                    }, 5000);
+                } else {
+                    throw new Error(data.error || 'Неизвестная ошибка');
+                }
+            } catch (error) {
+                status.innerHTML = '<span class="error">❌ Ошибка: ' + error.message + '</span>';
+            }
+        }
+        
+        function playHLS(url) {
+            const video = document.getElementById('video');
+            const status = document.getElementById('status');
+            
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                hls = new Hls({
+                    debug: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 5
+                });
+                
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                    status.innerHTML += '<br><span class="success">✅ HLS манифест загружен и воспроизводится!</span>';
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        status.innerHTML += '<br><span class="error">❌ HLS ошибка: ' + data.type + ' - ' + data.details + '</span>';
+                    }
+                });
+            } else {
+                status.innerHTML = '<span class="error">❌ HLS.js не поддерживается в этом браузере</span>';
+            }
+        }
+        
+        async function stopStream() {
+            if (currentStreamId) {
+                try {
+                    await fetch('http://localhost:3000/api/stream/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ streamId: currentStreamId })
+                    });
+                    
+                    document.getElementById('status').innerHTML = '⏹️ Поток остановлен';
+                    
+                    if (hls) {
+                        hls.destroy();
+                        hls = null;
+                    }
+                    
+                    currentStreamId = null;
+                } catch (error) {
+                    console.error('Ошибка остановки:', error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

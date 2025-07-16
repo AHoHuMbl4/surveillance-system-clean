@@ -69,6 +69,15 @@ class RTSPServer {
     }
 
     setupRoutes() {
+        // Отдача статических файлов из libs
+        this.app.get("/libs/:file", (req, res) => {
+            const filePath = path.join(__dirname, "libs", req.params.file);
+            if (fs.existsSync(filePath)) {
+                res.sendFile(filePath);
+            } else {
+                res.status(404).send("File not found");
+            }
+        });
         // Главная страница
         this.app.get('/', (req, res) => {
             const indexPath = path.join(__dirname, 'index.html');
@@ -85,6 +94,40 @@ class RTSPServer {
 
         // API маршруты
         this.setupAPIRoutes();
+
+        // Отдача HLS потоков
+        this.app.get("/stream/:streamId/:file", (req, res) => {
+            const { streamId, file } = req.params;
+            const filePath = path.join(this.rtspDecoder.streamDir, streamId, file);
+            
+            console.log(`📁 Запрос HLS файла: ${filePath}`);
+            
+            if (!fs.existsSync(filePath)) {
+                console.log(`❌ Файл не найден: ${filePath}`);
+                return res.status(404).send("File not found");
+            }
+            
+            const ext = path.extname(file);
+            let contentType = "application/octet-stream";
+            
+            if (ext === ".m3u8") {
+                contentType = "application/vnd.apple.mpegurl";
+            } else if (ext === ".ts") {
+                contentType = "video/mp2t";
+            }
+            
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Cache-Control", "no-cache");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            
+            const stream = fs.createReadStream(filePath);
+            stream.on("error", (error) => {
+                console.error(`❌ Ошибка чтения файла: ${error}`);
+                res.status(500).send("Internal server error");
+            });
+            
+            stream.pipe(res);
+        });
     }
 
     setupAPIRoutes() {
