@@ -1702,7 +1702,6 @@ let activeStreams = new Map();
 let hlsInstances = new Map();
 
 // Запуск HLS потока для камеры
-// ИСПРАВЛЕННАЯ функция startHLSStream
 async function startHLSStream(camera, quality = 'low') {
     const cameraId = camera.id;
     
@@ -1713,52 +1712,39 @@ async function startHLSStream(camera, quality = 'low') {
     console.log(`🚀 Запуск HLS потока для камеры ${camera.camera_name} (${quality})`);
     
     try {
-        const streamId = `camera_${cameraId}_${quality}_${Date.now()}`;
-        
         const response = await fetch('/api/stream/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                streamId: streamId,
-                rtspUrl: camera.rtsp_link || camera.rtsp_url,
+                cameraId: cameraId,
+                rtspUrl: camera.rtsp_url,
                 quality: quality
             })
         });
         
         const result = await response.json();
-        console.log('📊 Ответ сервера:', result);
         
-        if (result.success) {
-            activeStreams.set(cameraId, streamId);
-            const streamUrl = `/stream/${streamId}/playlist.m3u8`;
-            console.log(`📺 HLS URL: ${streamUrl}`);
+        if (result.success && result.streamUrl) {
+            activeStreams.set(cameraId, result.streamId);
             
             const video = document.getElementById(`video-${cameraId}`);
             const placeholder = document.getElementById(`placeholder-${cameraId}`);
             
             if (video && Hls.isSupported()) {
                 const hls = new Hls({
-                    debug: true,
                     liveSyncDurationCount: 3,
                     liveMaxLatencyDurationCount: 5,
                     enableWorker: true,
-                    lowLatencyMode: true
+                    lowLatencyMode: true,
+                    backBufferLength: 90
                 });
                 
-                setTimeout(() => {
-                    console.log(`⏳ Загрузка HLS потока: ${streamUrl}`);
-                    hls.loadSource(streamUrl);
-                    hls.attachMedia(video);
-                }, 2000);
+                hls.loadSource(result.streamUrl);
+                hls.attachMedia(video);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    console.log(`✅ HLS манифест загружен для ${camera.camera_name}`);
-                    video.play().catch(e => {
-                        console.warn('Автовоспроизведение заблокировано:', e);
-                        if (placeholder) {
-                            placeholder.innerHTML = '<button onclick="document.getElementById(\'video-' + cameraId + '\').play()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">▶️ Нажмите для воспроизведения</button>';
-                        }
-                    });
+                    console.log(`✅ HLS поток загружен для ${camera.camera_name}`);
+                    video.play().catch(e => console.warn('Автовоспроизведение заблокировано:', e));
                     
                     if (placeholder) placeholder.style.display = 'none';
                     video.style.display = 'block';
@@ -1781,7 +1767,7 @@ async function startHLSStream(camera, quality = 'low') {
                 return true;
             }
         } else {
-            throw new Error(result.error || result.message || 'Не удалось запустить поток');
+            throw new Error(result.error || 'Не удалось запустить поток');
         }
     } catch (error) {
         console.error(`❌ Ошибка запуска потока для ${camera.camera_name}:`, error);
@@ -1789,7 +1775,6 @@ async function startHLSStream(camera, quality = 'low') {
         return false;
     }
 }
-
 
 // Остальные HLS функции...
 // (см. полный код в артефакте выше)

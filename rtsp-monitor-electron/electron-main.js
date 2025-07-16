@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -22,16 +22,86 @@ function createWindow() {
         icon: path.join(__dirname, 'icon.png'),
         title: '🎥 RTSP Monitor - Система видеонаблюдения',
         show: false,
-        autoHideMenuBar: true
+        autoHideMenuBar: false // Показываем меню для доступа к DevTools
     });
+
+    // Создаем меню с возможностью открыть DevTools
+    const template = [
+        {
+            label: 'Файл',
+            submenu: [
+                {
+                    label: 'Выход',
+                    accelerator: 'CmdOrCtrl+Q',
+                    click: () => {
+                        app.quit();
+                    }
+                }
+            ]
+        },
+        {
+            label: 'Вид',
+            submenu: [
+                {
+                    label: 'Перезагрузить',
+                    accelerator: 'CmdOrCtrl+R',
+                    click: () => {
+                        mainWindow.webContents.reload();
+                    }
+                },
+                {
+                    label: 'Инструменты разработчика',
+                    accelerator: 'F12',
+                    click: () => {
+                        mainWindow.webContents.openDevTools();
+                    }
+                },
+                {
+                    type: 'separator'
+                },
+                {
+                    label: 'Полноэкранный режим',
+                    accelerator: 'F11',
+                    click: () => {
+                        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+                    }
+                }
+            ]
+        },
+        {
+            label: 'Помощь',
+            submenu: [
+                {
+                    label: 'О программе',
+                    click: () => {
+                        console.log('RTSP Monitor v1.0.0');
+                    }
+                }
+            ]
+        }
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+
+    // Автоматически открываем DevTools для отладки
+    // Закомментируйте эту строку в продакшене
+    mainWindow.webContents.openDevTools();
 
     // Показываем окно после полной загрузки
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
         console.log('✅ Главное окно отображено');
-        
-        // DevTools для отладки (только в разработке)
-        if (process.env.NODE_ENV === 'development') {
+    });
+
+    // Обработчик горячих клавиш
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        // F12 для DevTools
+        if (input.key === 'F12') {
+            mainWindow.webContents.openDevTools();
+        }
+        // Ctrl+Shift+I для DevTools
+        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
             mainWindow.webContents.openDevTools();
         }
     });
@@ -39,6 +109,19 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
         stopServer();
+    });
+
+    // Логирование событий загрузки
+    mainWindow.webContents.on('did-finish-load', () => {
+        console.log('✅ Страница загружена');
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('❌ Ошибка загрузки:', errorDescription);
+    });
+
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        console.log(`[Renderer] ${message}`);
     });
 
     return mainWindow;

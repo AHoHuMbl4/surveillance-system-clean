@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест HLS интеграции</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/hls.min.js"></script>
+</head>
+<body>
+    <h1>Тест HLS плеера</h1>
+    <video id="video" controls style="width: 100%; max-width: 600px;"></video>
+    <script>
+        if (Hls.isSupported()) {
+            const video = document.getElementById('video');
+            const hls = new Hls();
+            // Тестовый HLS поток
+            hls.loadSource('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
+            });
+            console.log('✅ HLS.js работает!');
+        } else {
+            console.log('❌ HLS.js не поддерживается');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Прямой тест HLS потока</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/hls.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        video { width: 640px; height: 480px; background: #000; }
+        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Прямой тест HLS потока</h1>
+    <video id="video" controls></video>
+    <div class="status" id="status">Инициализация...</div>
+    <button onclick="testStream()">Тестировать поток</button>
+    
+    <script>
+        function testStream() {
+            const status = document.getElementById('status');
+            status.innerHTML = 'Запуск потока...';
+            
+            // Запускаем поток
+            fetch('http://localhost:3000/api/stream/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cameraId: 1,
+                    rtspUrl: 'rtsp://185.70.184.101:8554/cam91-99',
+                    quality: 'low'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.streamUrl) {
+                    status.innerHTML = '<span class="success">Поток запущен!</span><br>URL: ' + data.streamUrl;
+                    playHLS(data.streamUrl);
+                } else {
+                    status.innerHTML = '<span class="error">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
+                }
+            })
+            .catch(err => {
+                status.innerHTML = '<span class="error">Ошибка сети: ' + err + '</span>';
+            });
+        }
+        
+        function playHLS(url) {
+            const video = document.getElementById('video');
+            
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                    document.getElementById('status').innerHTML += '<br><span class="success">HLS манифест загружен!</span>';
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    document.getElementById('status').innerHTML += '<br><span class="error">HLS ошибка: ' + data.type + ' - ' + data.details + '</span>';
+                });
+            }
+        }
+    </script>
+</body>
+</html>
