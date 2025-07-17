@@ -1,149 +1,199 @@
-const { app, BrowserWindow, Menu, Tray } = require('electron');
-const { spawn } = require('child_process');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 
 let mainWindow;
 let serverProcess;
-let tray;
 
 function createWindow() {
-    console.log('🚀 Создание главного окна...');
+    console.log('🎥 Создание главного окна RTSP Monitor');
     
     mainWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
+        width: 1920,
+        height: 1080,
+        minWidth: 1280,
+        minHeight: 720,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            webSecurity: false
+            webSecurity: false,
+            cache: false  // ОТКЛЮЧАЕМ КЕШИРОВАНИЕ
         },
+        icon: path.join(__dirname, 'assets', 'icon.png'),
         title: 'RTSP Monitor - Система видеонаблюдения',
-        show: false
+        show: false,
+        frame: true,
+        titleBarStyle: 'default'
     });
 
-    // Запуск сервера
-    startServer();
+    // ПРИНУДИТЕЛЬНАЯ ОЧИСТКА КЕША
+    mainWindow.webContents.session.clearCache().then(() => {
+        console.log('✅ Кеш очищен');
+        
+        // ЗАГРУЖАЕМ СТРАНИЦУ С ОТКЛЮЧЕННЫМ КЕШЕМ
+        mainWindow.loadURL('http://localhost:3000', {
+            extraHeaders: 'Cache-Control: no-cache, no-store, must-revalidate\nPragma: no-cache\nExpires: 0'
+        });
+    });
 
-    // Загрузка интерфейса через 3 секунды
-    setTimeout(() => {
-        console.log('🌐 Загрузка http://localhost:3000');
-        mainWindow.loadURL('http://localhost:3000');
+    // Скрываем меню в production
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'production') {
+        Menu.setApplicationMenu(null);
+    }
+
+    // Показываем окно когда готово
+    mainWindow.once('ready-to-show', () => {
+        console.log('✅ Главное окно готово к показу');
         mainWindow.show();
-    }, 3000);
-
-    mainWindow.on('close', (event) => {
-        if (!app.isQuiting) {
-            event.preventDefault();
-            mainWindow.hide();
+        
+        // В режиме разработки открываем DevTools
+        if (process.env.NODE_ENV === 'development') {
+            mainWindow.webContents.openDevTools();
         }
     });
 
-    mainWindow.webContents.on('did-finish-load', () => {
-        console.log('✅ Веб-интерфейс загружен успешно');
+    // Обработка закрытия окна
+    mainWindow.on('closed', () => {
+        console.log('🔌 Главное окно закрыто');
+        mainWindow = null;
     });
 
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-        console.error('❌ Ошибка загрузки:', errorDescription);
+    // ПРИНУДИТЕЛЬНАЯ ПЕРЕЗАГРУЗКА ПРИ ОШИБКАХ
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('❌ Ошибка загрузки интерфейса:', errorCode, errorDescription);
         
-        // Показываем ошибку в окне
-        const errorHtml = `
-        <html>
-        <body style="font-family: Arial; text-align: center; padding: 50px;">
-            <h1 style="color: #e74c3c;">⚠️ Ошибка подключения</h1>
-            <p>Не удается подключиться к серверу</p>
-            <p><strong>Ошибка:</strong> ${errorDescription}</p>
-            <button onclick="location.reload()" style="padding: 10px 20px; font-size: 16px;">Попробовать снова</button>
-        </body>
-        </html>`;
-        
-        mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(errorHtml));
+        if (errorCode === -102) { // CONNECTION_REFUSED
+            console.log('🔄 Ожидание запуска сервера...');
+            setTimeout(() => {
+                // ОЧИЩАЕМ КЕШИРОВАНИЕ И ПЕРЕЗАГРУЖАЕМ
+                mainWindow.webContents.session.clearCache().then(() => {
+                    mainWindow.webContents.reloadIgnoringCache();
+                });
+            }, 2000);
+        }
     });
+
+    console.log('🎯 Главное окно создано');
 }
 
 function startServer() {
-    console.log('🚀 Запуск встроенного сервера...');
+    console.log('🌐 Запуск встроенного RTSP сервера...');
     
-    const serverPath = path.join(__dirname, 'rtsp-server.js');
+    const serverScript = path.join(__dirname, 'rtsp-server.js');
     
-    serverProcess = spawn('node', [serverPath], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-            ...process.env,
-            NODE_ENV: 'production'
-        }
+    if (!require('fs').existsSync(serverScript)) {
+        console.error('❌ Файл rtsp-server.js не найден');
+        return;
+    }
+
+    serverProcess = spawn('node', [serverScript], {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
     });
 
     serverProcess.stdout.on('data', (data) => {
-        console.log('📊 Server:', data.toString().trim());
+        const output = data.toString().trim();
+        if (output) {
+            console.log('🌐 [Server]:', output);
+        }
     });
 
     serverProcess.stderr.on('data', (data) => {
-        console.error('❌ Server Error:', data.toString().trim());
+        const output = data.toString().trim();
+        if (output) {
+            console.error('🌐 [Server Error]:', output);
+        }
     });
 
     serverProcess.on('close', (code) => {
-        console.log(`🛑 Сервер завершился с кодом ${code}`);
+        console.log(`🌐 Сервер завершен с кодом: ${code}`);
+        serverProcess = null;
     });
 
     serverProcess.on('error', (error) => {
-        console.error('💥 Ошибка запуска сервера:', error);
+        console.error('❌ Ошибка запуска сервера:', error);
     });
+
+    console.log('✅ Сервер запущен');
 }
 
-function createTray() {
-    // Создаем простой трей без иконки
-    try {
-        const Menu = require('electron').Menu;
+function stopServer() {
+    if (serverProcess) {
+        console.log('🛑 Остановка встроенного сервера...');
+        serverProcess.kill('SIGTERM');
         
-        const contextMenu = Menu.buildFromTemplate([
-            {
-                label: 'Показать RTSP Monitor',
-                click: () => {
-                    mainWindow.show();
-                }
-            },
-            {
-                label: 'Выход',
-                click: () => {
-                    app.isQuiting = true;
-                    if (serverProcess) {
-                        serverProcess.kill();
-                    }
-                    app.quit();
-                }
+        setTimeout(() => {
+            if (serverProcess) {
+                serverProcess.kill('SIGKILL');
             }
-        ]);
-
-        // Устанавливаем меню приложения вместо трея (для совместимости)
-        Menu.setApplicationMenu(contextMenu);
-        console.log('📋 Меню приложения создано');
-        
-    } catch (error) {
-        console.warn('⚠️ Не удалось создать трей:', error.message);
+        }, 5000);
     }
 }
 
+// События приложения
 app.whenReady().then(() => {
-    console.log('⚡ Electron готов');
-    createWindow();
-    createTray();
+    console.log('🚀 Electron приложение готово');
+    
+    // Запускаем сервер
+    startServer();
+    
+    // Даем время серверу запуститься, затем создаем окно
+    setTimeout(() => {
+        createWindow();
+    }, 2000);
+
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
 });
 
 app.on('window-all-closed', () => {
-    // Не закрываем приложение полностью
-});
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
+    console.log('🔌 Все окна закрыты');
+    stopServer();
+    
+    if (process.platform !== 'darwin') {
+        app.quit();
     }
 });
 
-app.on('before-quit', () => {
-    app.isQuiting = true;
-    if (serverProcess) {
-        serverProcess.kill();
-    }
+app.on('before-quit', (event) => {
+    console.log('🛑 Завершение приложения...');
+    stopServer();
 });
 
-console.log('🚀 RTSP Monitor Electron Main загружен');
+// Горячие клавиши для разработки
+app.whenReady().then(() => {
+    const { globalShortcut } = require('electron');
+    
+    // F5 - перезагрузка с очисткой кеша
+    globalShortcut.register('F5', () => {
+        if (mainWindow) {
+            console.log('🔄 F5: Принудительная перезагрузка с очисткой кеша');
+            mainWindow.webContents.session.clearCache().then(() => {
+                mainWindow.webContents.reloadIgnoringCache();
+            });
+        }
+    });
+    
+    // Ctrl+R - перезагрузка с очисткой кеша
+    globalShortcut.register('CommandOrControl+R', () => {
+        if (mainWindow) {
+            console.log('🔄 Ctrl+R: Принудительная перезагрузка с очисткой кеша');
+            mainWindow.webContents.session.clearCache().then(() => {
+                mainWindow.webContents.reloadIgnoringCache();
+            });
+        }
+    });
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('💥 Необработанная ошибка:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Необработанное отклонение промиса:', reason);
+});
+
+console.log('🎥 RTSP Monitor Electron - С принудительной очисткой кеша');
