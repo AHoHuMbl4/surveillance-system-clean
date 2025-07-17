@@ -1,0 +1,190 @@
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+const OptimizedRTSPDecoder = require('./optimized-rtsp-decoder');
+
+class OptimizedRTSPServer {
+    constructor() {
+        this.rtspDecoder = new OptimizedRTSPDecoder();
+        this.server = null;
+        
+        this.config = {
+            cameras: [
+                { 
+                    id: 1, 
+                    camera_name: "Тестовая камера (рабочая)", 
+                    apartment_name: "Тест зона", 
+                    rtsp_main: "rtsp://185.70.184.101:8554/cam91-99", 
+                    rtsp_sub: "rtsp://185.70.184.101:8554/cam91-99" 
+                },
+                { 
+                    id: 2, 
+                    camera_name: "Hikvision 1", 
+                    apartment_name: "Офис 1", 
+                    rtsp_main: "rtsp://admin:Hikvision@192.168.12.107:554/h264", 
+                    rtsp_sub: "rtsp://admin:Hikvision@192.168.12.107:554/h264" 
+                },
+                { 
+                    id: 3, 
+                    camera_name: "Hikvision 2", 
+                    apartment_name: "Офис 2", 
+                    rtsp_main: "rtsp://admin:Hikvision@192.168.11.107:554/h264", 
+                    rtsp_sub: "rtsp://admin:Hikvision@192.168.11.107:554/h264" 
+                },
+                { 
+                    id: 4, 
+                    camera_name: "Hikvision 3", 
+                    apartment_name: "Офис 3", 
+                    rtsp_main: "rtsp://admin:Hikvision@192.168.29.107:554/h264", 
+                    rtsp_sub: "rtsp://admin:Hikvision@192.168.29.107:554/h264" 
+                },
+                { 
+                    id: 5, 
+                    camera_name: "Hikvision 4", 
+                    apartment_name: "Офис 4", 
+                    rtsp_main: "rtsp://admin:Hikvision@192.168.28.107:554/h264", 
+                    rtsp_sub: "rtsp://admin:Hikvision@192.168.28.107:554/h264" 
+                }
+            ]
+        };
+    }
+
+    createServer() {
+        return http.createServer(async (req, res) => {
+            try {
+                await this.handleRequest(req, res);
+            } catch (error) {
+                console.error('❌ Ошибка запроса:', error);
+                this.sendError(res, 500, 'Internal Server Error');
+            }
+        });
+    }
+
+    async handleRequest(req, res) {
+        const url = new URL(req.url, `http://localhost:3000`);
+        const pathname = url.pathname;
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+        }
+
+        console.log(`📡 ${req.method} ${pathname}`);
+
+        if (pathname === '/') {
+            // ПРИНУДИТЕЛЬНО читаем новый index.html
+            const indexPath = path.join(__dirname, 'index.html');
+            console.log(`📄 Читаем: ${indexPath}`);
+            
+            if (fs.existsSync(indexPath)) {
+                const content = fs.readFileSync(indexPath, 'utf8');
+                console.log(`📄 Размер файла: ${content.length} байт`);
+                console.log(`📄 Заголовок: ${content.substring(0, 200)}`);
+                
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.writeHead(200);
+                res.end(content);
+            } else {
+                console.error(`❌ Файл не найден: ${indexPath}`);
+                this.sendError(res, 404, 'Index file not found');
+            }
+        } else if (pathname === '/api/cameras') {
+            this.sendJSON(res, this.config.cameras);
+        } else if (pathname === '/api/stream/start') {
+            await this.handleStartStream(req, res);
+        } else if (pathname === '/api/stream/stop') {
+            await this.handleStopStream(req, res);
+        } else if (pathname === '/api/streams/status') {
+            const status = this.rtspDecoder.getStreamsStatus();
+            this.sendJSON(res, status);
+        } else {
+            this.sendError(res, 404, 'Not Found');
+        }
+    }
+
+    async handleStartStream(req, res) {
+        if (req.method !== 'POST') return this.sendError(res, 405, 'Method Not Allowed');
+
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            try {
+                const { cameraId, rtspUrl, quality = 'sub' } = JSON.parse(body);
+                console.log(`📡 API запуск: камера ${cameraId}, качество ${quality}`);
+
+                const streamId = `stream-${cameraId}-${quality}-${Date.now()}`;
+                const streamData = await this.rtspDecoder.startStreamOptimized(streamId, rtspUrl, quality);
+
+                this.sendJSON(res, {
+                    success: true,
+                    streamId: streamData.streamId,
+                    url: streamData.url,
+                    quality: quality
+                });
+            } catch (error) {
+                console.error('❌ Ошибка API запуска:', error);
+                this.sendJSON(res, { success: false, error: error.message }, 500);
+            }
+        });
+    }
+
+    async handleStopStream(req, res) {
+        if (req.method !== 'POST') return this.sendError(res, 405, 'Method Not Allowed');
+
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            try {
+                const { streamId } = JSON.parse(body);
+                console.log(`🛑 API остановка: ${streamId}`);
+                await this.rtspDecoder.stopStream(streamId);
+                this.sendJSON(res, { success: true });
+            } catch (error) {
+                console.error('❌ Ошибка API остановки:', error);
+                this.sendJSON(res, { success: false, error: error.message }, 500);
+            }
+        });
+    }
+
+    sendJSON(res, data, statusCode = 200) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.writeHead(statusCode);
+        res.end(JSON.stringify(data));
+    }
+
+    sendError(res, statusCode, message) {
+        res.writeHead(statusCode);
+        res.end(JSON.stringify({ error: message }));
+    }
+
+    start(port = 3000) {
+        this.server = this.createServer();
+        this.server.listen(port, () => {
+            console.log(`🌐 Исправленный RTSP Server: http://localhost:${port}`);
+            console.log(`📄 Принудительное чтение index.html`);
+            console.log(`✅ 5 камер настроены`);
+        });
+
+        process.on('SIGINT', async () => {
+            console.log('\n🛑 Остановка...');
+            await this.rtspDecoder.stopAllStreams();
+            if (this.server) this.server.close();
+            process.exit(0);
+        });
+
+        return this.server;
+    }
+}
+
+if (require.main === module) {
+    const server = new OptimizedRTSPServer();
+    server.start(3000);
+}
+
+module.exports = OptimizedRTSPServer;
